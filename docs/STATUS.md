@@ -8,8 +8,8 @@ Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) = **2
 |---|---|---|---|---:|---|---|---|
 | 0 Research & product | COORDINATOR | EDE-PLAN-001 | DONE | 100% | n/a (docs) | — | — |
 | 1 Architecture | COORDINATOR | EDE-ARCH-001 | DONE | 100% | n/a (docs/ADR) | — | — |
-| 2 Foundation | COORDINATOR | EDE-FOUND-002 | DONE (baseline frozen) | 100%* | unit 3/3; e2e smoke 3/3 | synced to GitHub | Live Supabase keys |
-| GitHub sync | DEVOPS-01 | EDE-GIT-001 | IN_PROGRESS | see gate | CI after typegen fix | https://github.com/kmgod2021/edenida.com | — |
+| 2 Foundation | COORDINATOR | EDE-FOUND-002 | DONE (baseline frozen) | 100%* | unit 3/3; e2e smoke 3/3 | synced | Live Supabase keys |
+| GitHub sync | DEVOPS-01 | EDE-GIT-001 | DONE | 100% (10/10) | CI success | https://github.com/kmgod2021/edenida.com | — |
 | 3 Wedding workspace | — | — | NOT_STARTED | 0% | — | — | Needs Supabase project |
 | 4 Website builder | — | — | NOT_STARTED | 0% | — | — | — |
 | 5 Guests + RSVP | — | — | NOT_STARTED | 0% | — | — | — |
@@ -20,9 +20,8 @@ Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) = **2
 | 10 QA + security | — | — | NOT_STARTED | 0% | — | — | — |
 | 11 Production readiness | — | — | NOT_STARTED | 0% | — | — | Vercel |
 
-\*Phase 2 local foundation acceptance (10/10): Next 16.3.3 app, tokens+home, auth pages, Supabase SSR clients + proxy, migration+RLS skeleton, CI, lint/typecheck/build, unit+Playwright smoke.
-**EDE-FOUND-002:** baseline `5135aaee8e7c89b6ec5ed872e34bef0a17b83b50` pushed to GitHub.
-**EDE-GIT-001:** origin synced; CI failed on missing `LayoutProps` without `next typegen` — minimal CI fix in progress.
+\*Phase 2 foundation frozen at `5135aaee8e7c89b6ec5ed872e34bef0a17b83b50`, then CI typegen fix `629f2e4e4ee911ac3503cb69d2b6e74bf8aff8fe`.
+**EDE-GIT-001:** `main` synced to GitHub; CI green after `next typegen` step.
 
 ## Weighted model
 See `docs/MVP.md` §5.
@@ -32,7 +31,7 @@ See `docs/MVP.md` §5.
 2. **Vercel project** → preview/prod
 3. Confirm default marketing locale (currently FR UI / EN tagline)
 
-## Gate notes (EDE-FOUND-002 / EDE-GIT-001)
-- `.env*` ignored; `.env.example` force-included
+## Gate notes
 - Remote: https://github.com/kmgod2021/edenida.com
-- Foundation migration path: `supabase/migrations/20260920010000_foundation.sql`
+- CI: https://github.com/kmgod2021/edenida.com/actions/runs/35537085908
+- Foundation migration: `supabase/migrations/20260920010000_foundation.sql`
