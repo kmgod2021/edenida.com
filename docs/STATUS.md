@@ -1,37 +1,25 @@
 # Edenida — Project Status
 
 **Last update:** 2026-09-20
-**Overall completion:** **22%**
-Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) = **22%**. Phases 3–11 = 0%.
+**Overall completion:** **22%** (Phase 3 still closed)
+Calculation: Phase 0–2 complete (22%). EDE-DATA-001 gate in review — does not unlock Phase 3 until Coordinator approval.
 
 | Phase | Agent | Task | Status | Completion | Tests | PR | Blocker |
 |---|---|---|---|---:|---|---|---|
-| 0 Research & product | COORDINATOR | EDE-PLAN-001 | DONE | 100% | n/a (docs) | — | — |
-| 1 Architecture | COORDINATOR | EDE-ARCH-001 | DONE | 100% | n/a (docs/ADR) | — | — |
-| 2 Foundation | COORDINATOR | EDE-FOUND-002 | DONE (baseline frozen) | 100%* | unit 3/3; e2e smoke 3/3 | synced | Live Supabase keys |
-| GitHub sync | DEVOPS-01 | EDE-GIT-001 | DONE | 100% (10/10) | CI success | https://github.com/kmgod2021/edenida.com | — |
-| 3 Wedding workspace | — | — | NOT_STARTED | 0% | — | — | Needs Supabase project |
-| 4 Website builder | — | — | NOT_STARTED | 0% | — | — | — |
-| 5 Guests + RSVP | — | — | NOT_STARTED | 0% | — | — | — |
-| 6 Checklist + events | — | — | NOT_STARTED | 0% | — | — | — |
-| 7 Budget + vendors | — | — | NOT_STARTED | 0% | — | — | — |
-| 8 Seating | — | — | NOT_STARTED | 0% | — | — | — |
-| 9 Notes/files/inspiration | — | — | NOT_STARTED | 0% | — | — | — |
-| 10 QA + security | — | — | NOT_STARTED | 0% | — | — | — |
-| 11 Production readiness | — | — | NOT_STARTED | 0% | — | — | Vercel |
+| 0 Research & product | COORDINATOR | EDE-PLAN-001 | DONE | 100% | n/a | — | — |
+| 1 Architecture | COORDINATOR | EDE-ARCH-001 | DONE | 100% | n/a | — | — |
+| 2 Foundation | COORDINATOR | EDE-FOUND-002 | DONE | 100% | smoke | synced | — |
+| GitHub sync | DEVOPS-01 | EDE-GIT-001 | DONE | 100% | CI green | synced | — |
+| Supabase foundation | SUPABASE-01 | EDE-DATA-001 | READY_FOR_REVIEW | see PR | pgTAP+auth e2e | pending | Coordinator gate |
+| 3 Wedding workspace | — | — | NOT_STARTED | 0% | — | — | Await EDE-DATA-001 approval |
 
-\*Phase 2 foundation frozen at `5135aaee8e7c89b6ec5ed872e34bef0a17b83b50`, then CI typegen fix `629f2e4e4ee911ac3503cb69d2b6e74bf8aff8fe`.
-**EDE-GIT-001:** `main` synced to GitHub; CI green after `next typegen` step.
-
-## Weighted model
-See `docs/MVP.md` §5.
+## EDE-DATA-001 notes
+- DEVELOPMENT DB migrations applied (foundation + RLS recursion fix)
+- Publishable key model (`sb_publishable_...`); no privileged key in Next client
+- Email confirmation: **ON** (dev E2E seeds confirmed users via DB helper)
+- Anonymous weddings SELECT: denied (`42501`)
 
 ## Open blockers
-1. **Supabase project + keys** → `.env.local` (blocks live signup/login and Phase 3 data)
-2. **Vercel project** → preview/prod
-3. Confirm default marketing locale (currently FR UI / EN tagline)
-
-## Gate notes
-- Remote: https://github.com/kmgod2021/edenida.com
-- CI: https://github.com/kmgod2021/edenida.com/actions/runs/35537085908
-- Foundation migration: `supabase/migrations/20260920010000_foundation.sql`
+1. Coordinator review/merge of EDE-DATA-001
+2. Vercel project (later)
+3. Optional: disable email confirmation only on dedicated local Auth if preferred for DX

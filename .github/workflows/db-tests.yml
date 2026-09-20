@@ -1,0 +1,31 @@
+name: Database Tests
+
+on:
+  pull_request:
+  push:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/db-tests.yml"
+
+jobs:
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+
+      - name: Start local Supabase DB
+        run: supabase db start
+
+      - name: Run pgTAP tests
+        run: supabase test db
+
+# Note: remote credentials are NOT used in CI.
+# Local/integration auth E2E requiring NEXT_PUBLIC_SUPABASE_* should use
+# GitHub Secrets only after explicit authorization:
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
