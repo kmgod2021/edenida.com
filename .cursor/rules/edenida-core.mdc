@@ -1,0 +1,17 @@
+---
+description: Edenida core engineering rules — always apply
+alwaysApply: true
+---
+
+# Edenida rules
+
+- This is a production SaaS, not a demo. Prefer maintainable, tested, secure code.
+- Read `AGENTS.md` and `docs/STATUS.md` before substantial work.
+- Stack: Next.js 16 App Router, TypeScript strict, pnpm, Tailwind, shadcn, Supabase, Zod, Playwright.
+- Never put Supabase service_role or secrets in client bundles.
+- RLS required on exposed tables; guest PII must not appear in public website data.
+- Website builder is block-based; keep content separate from presentation.
+- Write Playwright coverage with features; use getByRole/getByLabel preferentially.
+- Do not invent completion percentages; update `docs/STATUS.md` measurably.
+- Conventional Commits; branch pattern `agent/<id>/<task>-<slug>` for agent work.
+- Avoid drive-by refactors and unsolicited markdown files outside the docs plan.
