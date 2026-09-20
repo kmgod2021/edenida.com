@@ -31,6 +31,10 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # Next.js typed routes (LayoutProps, etc.) require generated defs before tsc.
+      - name: Generate Next.js types
+        run: pnpm exec next typegen
+
       - name: Typecheck
         run: pnpm typecheck
 
