@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(18);
+select plan(19);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'weddings', 'weddings exists');
@@ -41,7 +41,8 @@ select ok(
   'RLS enabled on wedding_members'
 );
 
-select has_function('public', 'is_wedding_member', array['uuid'], 'is_wedding_member exists');
+select has_function('private', 'is_wedding_member', array['uuid'], 'private.is_wedding_member exists');
+select has_function('private', 'can_edit_wedding', array['uuid'], 'private.can_edit_wedding exists');
 
 select isnt_empty(
   $$ select 1 from pg_policies where schemaname = 'public' and tablename = 'weddings' $$,
