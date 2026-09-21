@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { WeddingProvider } from "@/features/workspace/components/wedding-provider";
 import { WorkspaceNav } from "@/features/workspace/components/workspace-nav";
+import { WorkspaceNotFound } from "@/features/workspace/components/workspace-not-found";
 import { WorkspaceShell } from "@/features/workspace/components/workspace-shell";
 import type { WeddingContext } from "@/features/workspace/domain/types";
 import { getWeddingWorkspaceService } from "@/features/workspace/server/get-workspace-service";
@@ -41,7 +41,9 @@ export default async function WeddingWorkspaceLayout({
 }) {
   const { weddingId } = await params;
   const context = await loadContext(weddingId);
-  if (!context) notFound();
+  if (!context) {
+    return <WorkspaceNotFound />;
+  }
 
   return (
     <WeddingProvider value={context}>

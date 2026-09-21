@@ -114,16 +114,15 @@ describe("workspace components", () => {
     expect(markup).toContain("Tableau de bord");
     expect(markup).not.toContain("Plan de table");
 
+    /* eslint-disable react/no-children-prop -- createElement props typing requires children */
     const shell = html(
-      createElement(
-        WorkspaceShell,
-        {
-          weddingTitle: "Camille & Julien",
-          nav: createElement("p", null, "Nav"),
-        },
-        createElement("p", null, "Contenu"),
-      ),
+      createElement(WorkspaceShell, {
+        weddingTitle: "Camille & Julien",
+        nav: createElement("p", null, "Nav"),
+        children: createElement("p", null, "Contenu"),
+      }),
     );
+    /* eslint-enable react/no-children-prop */
     expect(shell).toContain('id="workspace-main"');
     expect(shell).toContain("Aller au contenu");
   });
@@ -141,9 +140,14 @@ describe("workspace components", () => {
       current,
       summary,
     };
+    /* eslint-disable react/no-children-prop -- createElement props typing requires children */
     const markup = html(
-      createElement(WeddingProvider, { value }, createElement(DashboardView)),
+      createElement(WeddingProvider, {
+        value,
+        children: createElement(DashboardView),
+      }),
     );
+    /* eslint-enable react/no-children-prop */
     expect(markup).toContain("Camille &amp; Julien");
     expect(markup).toContain("Organisateur");
     expect(markup).toContain("pas encore membre");
@@ -152,9 +156,16 @@ describe("workspace components", () => {
     expect(markup).toContain('aria-valuenow="66"');
 
     expect(() => html(createElement(Consumer))).toThrow(/WeddingProvider/);
+    /* eslint-disable react/no-children-prop -- createElement props typing requires children */
     expect(
-      html(createElement(WeddingProvider, { value }, createElement(Consumer))),
+      html(
+        createElement(WeddingProvider, {
+          value,
+          children: createElement(Consumer),
+        }),
+      ),
     ).toContain("Camille &amp; Julien");
+    /* eslint-enable react/no-children-prop */
   });
 
   it("lists more than one wedding without dropping titles", () => {

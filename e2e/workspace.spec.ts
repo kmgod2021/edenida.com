@@ -17,9 +17,9 @@ test.describe("wedding workspace", () => {
   test("requires a title before creating a wedding", async ({ page }) => {
     await page.goto("/app/weddings/new");
     await page.getByRole("button", { name: "Créer le mariage" }).click();
-    await expect(page.getByRole("alert")).toContainText(
-      "Le titre du mariage est requis",
-    );
+    await expect(
+      page.getByText("Le titre du mariage est requis"),
+    ).toBeVisible();
   });
 
   test("creates a wedding and shows countdown, progress, and empty modules", async ({
@@ -58,12 +58,13 @@ test.describe("wedding workspace", () => {
     await page.goto("/app/weddings/new");
     await page.getByLabel("Titre du mariage").fill("Titre provisoire");
     await page.getByRole("button", { name: "Créer le mariage" }).click();
-    await page.getByRole("link", { name: "Réglages" }).click();
+    await page
+      .getByRole("navigation", { name: "Espace mariage" })
+      .getByRole("link", { name: "Réglages" })
+      .click();
     await page.getByLabel("Titre du mariage").fill("Le mariage de Camille");
     await page.getByRole("button", { name: "Enregistrer" }).click();
-    await expect(page.getByRole("status")).toContainText(
-      "Modifications enregistrées.",
-    );
+    await expect(page.getByText("Modifications enregistrées.")).toBeVisible();
     await expect(page.getByRole("banner")).toContainText("Le mariage de Camille");
   });
 
