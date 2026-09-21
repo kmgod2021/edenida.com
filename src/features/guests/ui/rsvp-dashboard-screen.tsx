@@ -39,7 +39,9 @@ export function RsvpDashboardScreen({
         {stats.map(([label, value]) => (
           <div key={label}>
             <dt className="text-sm text-ink-muted">{label}</dt>
-            <dd className="mt-1 font-display text-4xl text-ink">{value}</dd>
+            <dd aria-label={label} className="mt-1 font-display text-4xl text-ink">
+              {value}
+            </dd>
           </div>
         ))}
       </dl>

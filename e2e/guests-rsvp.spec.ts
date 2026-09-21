@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import {
   FIXTURE_PRIVATE_NOTE,
@@ -15,6 +15,17 @@ function guestList(session: string, scenario = "demo") {
   const params = new URLSearchParams({ session });
   if (scenario !== "demo") params.set("scenario", scenario);
   return `/app/weddings/${FIXTURE_WEDDING_ID}/guests?${params.toString()}`;
+}
+
+function pageAlert(page: Page) {
+  return page.locator("main").getByRole("alert");
+}
+
+function dashboardCount(page: Page, label: string) {
+  return page
+    .locator("dl div")
+    .filter({ has: page.locator("dt", { hasText: new RegExp(`^${label}$`) }) })
+    .locator("dd");
 }
 
 test.describe("guest list", () => {
@@ -58,7 +69,7 @@ test.describe("guest list", () => {
     await page.goto(guestList(session));
     await page.getByRole("link", { name: "Ajouter un invité" }).click();
     await page.getByLabel("Prénom").fill("Nina");
-    await page.getByLabel("Nom").fill("Bernard");
+    await page.getByRole("textbox", { name: "Nom", exact: true }).fill("Bernard");
     await page.getByRole("button", { name: "Enregistrer" }).click();
     await expect(page.getByRole("link", { name: "Nina Bernard" })).toBeVisible();
 
@@ -75,7 +86,7 @@ test.describe("guest list", () => {
       `/app/weddings/${FIXTURE_WEDDING_ID}/households?session=${session}`,
     );
     await page.getByLabel("Nom du foyer").fill("Famille Bernard");
-    await page.getByLabel("Adresse").fill("8 rue Verte, Nantes");
+    await page.locator("#household-address").fill("8 rue Verte, Nantes");
     await page.getByRole("button", { name: "Ajouter le foyer" }).click();
     await expect(page.getByRole("status")).toHaveText("Foyer enregistré.");
     await expect(page.getByRole("heading", { name: "Famille Bernard" })).toBeVisible();
@@ -91,7 +102,7 @@ test.describe("guest list", () => {
     await expect(page.getByText("Léa Martin")).toHaveCount(0);
 
     await page.goto(guestList(session, "error"));
-    await expect(page.getByRole("alert")).toContainText("indisponibles");
+    await expect(pageAlert(page)).toContainText("indisponibles");
     await expect(page.getByText("Léa Martin")).toHaveCount(0);
     await expect(page.getByText(FIXTURE_PRIVATE_NOTE)).toHaveCount(0);
   });
@@ -101,9 +112,8 @@ test.describe("RSVP", () => {
   test("shows dashboard counts", async ({ page }) => {
     const session = sessionId();
     await page.goto(`/app/weddings/${FIXTURE_WEDDING_ID}/rsvp?session=${session}`);
-    await expect(page.getByRole("heading", { name: "Réponses" })).toBeVisible();
-    const presents = page.getByRole("term", { name: "Présents", exact: true }).locator("..");
-    await expect(presents.getByRole("definition")).toHaveText("3");
+    await expect(page.getByRole("heading", { name: "Réponses", exact: true })).toBeVisible();
+    await expect(dashboardCount(page, "Présents")).toHaveText("3");
     await expect(page.getByRole("link", { name: "Awa Diallo" })).toBeVisible();
   });
 
@@ -134,12 +144,8 @@ test.describe("RSVP", () => {
     await expect(page.getByText(FIXTURE_TOKENS.lea)).toHaveCount(0);
 
     await page.goto(`/app/weddings/${FIXTURE_WEDDING_ID}/rsvp?session=${session}`);
-    const presents = page.getByRole("term", { name: "Présents", exact: true }).locator("..");
-    await expect(presents.getByRole("definition")).toHaveText("4");
-    const plusOnes = page
-      .getByRole("term", { name: "Plus-ones présents", exact: true })
-      .locator("..");
-    await expect(plusOnes.getByRole("definition")).toHaveText("1");
+    await expect(dashboardCount(page, "Présents")).toHaveText("4");
+    await expect(dashboardCount(page, "Plus-ones présents")).toHaveText("1");
   });
 
   test("hides plus-one fields when the invitation does not allow one", async ({ page }) => {
@@ -156,7 +162,7 @@ test.describe("RSVP", () => {
     const session = sessionId();
     async function open(path: string) {
       await page.goto(path);
-      const alert = page.getByRole("alert");
+      const alert = pageAlert(page);
       await expect(alert).toBeVisible();
       const text = (await alert.textContent()) ?? "";
       await expect(page.getByText("Léa")).toHaveCount(0);
