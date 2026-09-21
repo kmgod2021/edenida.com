@@ -544,7 +544,7 @@ export function VendorManager({
             </h4>
             {linkedItems.length === 0 ? (
               <p className="text-sm text-ink-muted">
-                Aucun poste budgétaire lié (lecture seule Wave A).
+                Aucun poste budgétaire lié.
               </p>
             ) : (
               <ul className="space-y-1 text-sm text-ink-muted">

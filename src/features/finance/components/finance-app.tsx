@@ -150,8 +150,9 @@ export function FinanceApp({
             Budget & prestataires
           </h1>
           <p className="mt-2 max-w-2xl text-ink-muted">
-            Suivez estimés, engagements, paiements et vos prestataires — en
-            local pour Wave A, prêt pour l&apos;intégration données.
+            Suivez les estimés, les engagements, les paiements et vos
+            prestataires. Les montants restent sur cet appareil jusqu&apos;à la
+            connexion de votre espace mariage.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -61,6 +61,7 @@ export function BudgetDashboard({
   const [itemEstimated, setItemEstimated] = useState("");
   const [itemCommitted, setItemCommitted] = useState("");
   const [itemDueOn, setItemDueOn] = useState("");
+  const [itemVendorId, setItemVendorId] = useState("");
   const [paymentItemId, setPaymentItemId] = useState("");
   const [paymentLabel, setPaymentLabel] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -125,6 +126,7 @@ export function BudgetDashboard({
       estimatedCents: estimated,
       committedCents: committed,
       dueOn: itemDueOn || null,
+      vendorId: itemVendorId || null,
     });
     apply(result);
     if (result.ok) {
@@ -132,6 +134,7 @@ export function BudgetDashboard({
       setItemEstimated("");
       setItemCommitted("");
       setItemDueOn("");
+      setItemVendorId("");
       const created = result.workspace.items.at(-1);
       if (created && !paymentItemId) setPaymentItemId(created.id);
     }
@@ -320,6 +323,24 @@ export function BudgetDashboard({
               onChange={(event) => setItemDueOn(event.target.value)}
             />
           </div>
+          <div>
+            <label htmlFor="item-vendor" className={labelClass}>
+              Prestataire lié
+            </label>
+            <select
+              id="item-vendor"
+              className={fieldClass}
+              value={itemVendorId}
+              onChange={(event) => setItemVendorId(event.target.value)}
+            >
+              <option value="">Aucun</option>
+              {workspace.vendors.map((vendor) => (
+                <option key={vendor.id} value={vendor.id}>
+                  {vendor.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             type="submit"
             className={buttonPrimary}
@@ -371,12 +392,16 @@ export function BudgetDashboard({
                   const category = workspace.categories.find(
                     (entry) => entry.id === item.categoryId,
                   );
+                  const vendor = workspace.vendors.find(
+                    (entry) => entry.id === item.vendorId,
+                  );
                   return (
                     <tr key={item.id} className="border-t border-line">
                       <td className="px-3 py-2">
                         <div className="font-medium text-ink">{item.name}</div>
                         <div className="text-xs text-ink-muted">
                           {category?.name ?? "Sans catégorie"}
+                          {vendor ? ` · ${vendor.name}` : ""}
                         </div>
                       </td>
                       <td className="px-3 py-2 tabular-nums">
