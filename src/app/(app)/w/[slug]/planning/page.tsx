@@ -10,20 +10,20 @@ export default async function PlanningPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ weddingId: string }>;
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{
     scenario?: string | string[];
     date?: string | string[];
     today?: string | string[];
   }>;
 }) {
-  const { weddingId } = await params;
+  const { slug } = await params;
   const query = readPlanningDemoQuery(await searchParams);
 
   return (
     <PlanningWorkspace
-      key={`${weddingId}:${query.scenario}:${query.weddingDate ?? ""}:${query.today}`}
-      weddingId={weddingId}
+      key={`${slug}:${query.scenario}:${query.weddingDate ?? ""}:${query.today}`}
+      weddingId={slug}
       scenario={query.scenario}
       weddingDate={query.weddingDate}
       today={query.today}
