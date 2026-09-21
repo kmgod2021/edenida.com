@@ -29,17 +29,25 @@ test.describe("finance budget + vendors", () => {
     await page.getByLabel(/^Estimé$/i).fill("3200");
     await page.getByLabel(/Engagé \(optionnel\)/i).fill("3200");
     await page.getByRole("button", { name: /Ajouter le poste/i }).click();
-    await expect(page.getByText("Forfait journée")).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Postes budgétaires" })
+        .getByText("Forfait journée"),
+    ).toBeVisible();
 
     await page.getByLabel(/^Poste$/i).selectOption({ label: "Forfait journée" });
     await page.getByLabel(/Libellé/i).fill("Dépôt");
     await page.getByLabel(/^Montant$/i).fill("800");
     await page.getByRole("button", { name: /Ajouter le paiement/i }).click();
-    await expect(page.getByText(/Dépôt/)).toBeVisible();
+    await expect(page.getByText(/Dépôt ·/)).toBeVisible();
 
     await page.getByRole("button", { name: /Marquer payé/i }).click();
     await expect(page.getByText(/payé le/i)).toBeVisible();
-    await expect(page.getByText("2 400,00 CAD").first()).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Résumé budgétaire" }).getByText(
+        "2 400,00 CAD",
+      ),
+    ).toBeVisible();
   });
 
   test("vendor flow: photographer quote, deposit, balance, contact", async ({
@@ -61,9 +69,21 @@ test.describe("finance budget + vendors", () => {
     await page.getByLabel(/^Notes$/i).fill("Second photographe inclus.");
     await page.getByRole("button", { name: /Ajouter le prestataire/i }).click();
 
-    await expect(page.getByText("Atelier Lumière").first()).toBeVisible();
-    await expect(page.getByText(/3 200,00 CAD/)).toBeVisible();
-    await expect(page.getByText(/2 400,00 CAD/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Atelier Lumière" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: /Détail Atelier Lumière/i }).getByText(
+        "3 200,00 CAD",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: /Détail Atelier Lumière/i }).getByText(
+        "2 400,00 CAD",
+        { exact: true },
+      ),
+    ).toBeVisible();
 
     await page.getByLabel(/Nom du contact/i).fill("Léa Martin");
     await page.getByLabel(/^Rôle$/i).fill("Photographe principale");
