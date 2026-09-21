@@ -1,0 +1,56 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
+import { z } from "zod";
+
+import { WeddingProvider } from "@/features/workspace/components/wedding-provider";
+import { WorkspaceNav } from "@/features/workspace/components/workspace-nav";
+import { WorkspaceShell } from "@/features/workspace/components/workspace-shell";
+import type { WeddingContext } from "@/features/workspace/domain/types";
+import { getWeddingWorkspaceService } from "@/features/workspace/server/get-workspace-service";
+
+async function loadContext(weddingId: string): Promise<WeddingContext | null> {
+  if (!z.uuid().safeParse(weddingId).success) return null;
+  const service = await getWeddingWorkspaceService();
+  const current = await service.getCurrent(weddingId);
+  const summary = await service.getSummary(weddingId);
+  if (!current || !summary) return null;
+  return {
+    viewerUserId: service.viewerUserId,
+    current,
+    summary,
+  };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ weddingId: string }>;
+}): Promise<Metadata> {
+  const { weddingId } = await params;
+  const context = await loadContext(weddingId);
+  return { title: context?.current.wedding.title ?? "Mariage" };
+}
+
+export default async function WeddingWorkspaceLayout({
+  children,
+  params,
+}: {
+  children: ReactNode;
+  params: Promise<{ weddingId: string }>;
+}) {
+  const { weddingId } = await params;
+  const context = await loadContext(weddingId);
+  if (!context) notFound();
+
+  return (
+    <WeddingProvider value={context}>
+      <WorkspaceShell
+        weddingTitle={context.current.wedding.title}
+        nav={<WorkspaceNav weddingId={weddingId} />}
+      >
+        {children}
+      </WorkspaceShell>
+    </WeddingProvider>
+  );
+}
