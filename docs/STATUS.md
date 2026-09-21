@@ -1,8 +1,10 @@
 # Edenida — Project Status
 
-**Last update:** 2026-09-20
-**Overall completion:** **22%**
-Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) = **22%**. Phases 3–11 = 0%.
+**Last update:** 2026-09-21
+**Overall completion:** **38%**
+Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) + Phase 4 (20%×80%) = **38%**. Phases 3 and 5–11 = 0%.
+
+Phase 4 is 8/10 slices (80%), not phase-complete. Slices done: domain model, block registry (11 types), six template presenters, builder workspace, enable/reorder, content editing, desktop/mobile preview, unit + Playwright. Not done: Supabase persistence, publish + public `/w/[slug]`. Acceptance for EDE-WEB-001: **READY_FOR_DATA_INTEGRATION**.
 
 | Phase | Agent | Task | Status | Completion | Tests | PR | Blocker |
 |---|---|---|---|---:|---|---|---|
@@ -11,7 +13,7 @@ Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) = **2
 | 2 Foundation | COORDINATOR | EDE-FOUND-002 | DONE (baseline frozen) | 100%* | unit 3/3; e2e smoke 3/3 | synced | Live Supabase keys |
 | GitHub sync | DEVOPS-01 | EDE-GIT-001 | DONE | 100% (10/10) | CI success | https://github.com/kmgod2021/edenida.com | — |
 | 3 Wedding workspace | — | — | NOT_STARTED | 0% | — | — | Needs Supabase project |
-| 4 Website builder | — | — | NOT_STARTED | 0% | — | — | — |
+| 4 Website builder | EDENIDA-WEBSITE-01 | EDE-WEB-001 | READY_FOR_DATA_INTEGRATION | 80% (8/10) | unit 12/12; e2e builder 6/6 + smoke 6/6 | branch `agent/edenida-website-01/ede-web-001-builder-core` (not merged) | Persistence + publish |
 | 5 Guests + RSVP | — | — | NOT_STARTED | 0% | — | — | — |
 | 6 Checklist + events | — | — | NOT_STARTED | 0% | — | — | — |
 | 7 Budget + vendors | — | — | NOT_STARTED | 0% | — | — | — |
@@ -35,3 +37,5 @@ See `docs/MVP.md` §5.
 - Remote: https://github.com/kmgod2021/edenida.com
 - CI: https://github.com/kmgod2021/edenida.com/actions/runs/35537085908
 - Foundation migration: `supabase/migrations/20260920010000_foundation.sql`
+- EDE-WEB-001 handoff: `src/features/website/persistence/HANDOFF.md`
+- Builder (Wave A, fixture): `/app/w/fixture-wedding/website`
