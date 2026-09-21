@@ -1,8 +1,8 @@
 # Edenida — Project Status
 
-**Last update:** 2026-09-20
-**Overall completion:** **22%**
-Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) = **22%**. Phases 3–11 = 0%.
+**Last update:** 2026-09-21
+**Overall completion:** **26%**
+Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) + Phase 7 (8%×50%) = **26%**. Other phases unchanged.
 
 | Phase | Agent | Task | Status | Completion | Tests | PR | Blocker |
 |---|---|---|---|---:|---|---|---|
@@ -14,7 +14,7 @@ Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) = **2
 | 4 Website builder | — | — | NOT_STARTED | 0% | — | — | — |
 | 5 Guests + RSVP | — | — | NOT_STARTED | 0% | — | — | — |
 | 6 Checklist + events | — | — | NOT_STARTED | 0% | — | — | — |
-| 7 Budget + vendors | — | — | NOT_STARTED | 0% | — | — | — |
+| 7 Budget + vendors | FINANCE-01 | EDE-FINANCE-001 | READY_FOR_DATA_INTEGRATION | 50%† | unit finance 14 + persistence 3; e2e finance | branch `agent/edenida-finance-01/ede-finance-001-core` | Supabase adapter + RLS + wedding route |
 | 8 Seating | — | — | NOT_STARTED | 0% | — | — | — |
 | 9 Notes/files/inspiration | — | — | NOT_STARTED | 0% | — | — | — |
 | 10 QA + security | — | — | NOT_STARTED | 0% | — | — | — |
@@ -23,6 +23,8 @@ Calculation: Phase 0 (5%×100%) + Phase 1 (5%×100%) + Phase 2 (12%×100%) = **2
 \*Phase 2 foundation frozen at `5135aaee8e7c89b6ec5ed872e34bef0a17b83b50`, then CI typegen fix `629f2e4e4ee911ac3503cb69d2b6e74bf8aff8fe`.
 **EDE-GIT-001:** `main` synced to GitHub; CI green after `next typegen` step.
 
+†Phase 7 Wave A (Track 7): domain contracts (`BudgetCategory`, `BudgetItem`, `Payment`, `Vendor`, `VendorContact`), Budget dashboard + Vendor manager UI at `/app/finance`, fixtures, memory/localStorage repos, persistence handoff. **Not done:** migrations, RLS, Supabase `FinanceRepository`, `/(app)/w/[weddingId]/finance`.
+
 ## Weighted model
 See `docs/MVP.md` §5.
 
@@ -30,8 +32,10 @@ See `docs/MVP.md` §5.
 1. **Supabase project + keys** → `.env.local` (blocks live signup/login and Phase 3 data)
 2. **Vercel project** → preview/prod
 3. Confirm default marketing locale (currently FR UI / EN tagline)
+4. **Finance data integration** → implement Supabase adapter per `src/features/finance/persistence/handoff.ts`
 
 ## Gate notes
 - Remote: https://github.com/kmgod2021/edenida.com
 - CI: https://github.com/kmgod2021/edenida.com/actions/runs/35537085908
 - Foundation migration: `supabase/migrations/20260920010000_foundation.sql`
+- Finance Wave A status constant: `FINANCE_INTEGRATION_STATUS = READY_FOR_DATA_INTEGRATION`
