@@ -23,18 +23,18 @@ select ok(exists (select 1 from public.profiles where id = 'a5555555-5555-5555-5
 set local role postgres;
 
 insert into public.weddings (id, title, created_by) values
-  ('w1111111-1111-1111-1111-111111111111', 'Wedding A', 'a1111111-1111-1111-1111-111111111111'),
-  ('w2222222-2222-2222-2222-222222222222', 'Wedding B', 'b1111111-1111-1111-1111-111111111111'),
-  ('w3333333-3333-3333-3333-333333333333', 'Disposable', 'a1111111-1111-1111-1111-111111111111');
+  ('c1111111-1111-1111-1111-111111111111', 'Wedding A', 'a1111111-1111-1111-1111-111111111111'),
+  ('c2222222-2222-2222-2222-222222222222', 'Wedding B', 'b1111111-1111-1111-1111-111111111111'),
+  ('c3333333-3333-3333-3333-333333333333', 'Disposable', 'a1111111-1111-1111-1111-111111111111');
 
 insert into public.wedding_members (wedding_id, user_id, role) values
-  ('w1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'owner'),
-  ('w1111111-1111-1111-1111-111111111111', 'a2222222-2222-2222-2222-222222222222', 'partner'),
-  ('w1111111-1111-1111-1111-111111111111', 'a3333333-3333-3333-3333-333333333333', 'collaborator'),
-  ('w1111111-1111-1111-1111-111111111111', 'a4444444-4444-4444-4444-444444444444', 'wedding_planner'),
-  ('w1111111-1111-1111-1111-111111111111', 'a5555555-5555-5555-5555-555555555555', 'viewer'),
-  ('w2222222-2222-2222-2222-222222222222', 'b1111111-1111-1111-1111-111111111111', 'owner'),
-  ('w3333333-3333-3333-3333-333333333333', 'a1111111-1111-1111-1111-111111111111', 'owner');
+  ('c1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'owner'),
+  ('c1111111-1111-1111-1111-111111111111', 'a2222222-2222-2222-2222-222222222222', 'partner'),
+  ('c1111111-1111-1111-1111-111111111111', 'a3333333-3333-3333-3333-333333333333', 'collaborator'),
+  ('c1111111-1111-1111-1111-111111111111', 'a4444444-4444-4444-4444-444444444444', 'wedding_planner'),
+  ('c1111111-1111-1111-1111-111111111111', 'a5555555-5555-5555-5555-555555555555', 'viewer'),
+  ('c2222222-2222-2222-2222-222222222222', 'b1111111-1111-1111-1111-111111111111', 'owner'),
+  ('c3333333-3333-3333-3333-333333333333', 'a1111111-1111-1111-1111-111111111111', 'owner');
 
 select ok(
   not exists (
@@ -57,99 +57,99 @@ select ok(
 
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
-select throws_ok($$ select private.can_edit_wedding('w1111111-1111-1111-1111-111111111111'::uuid) $$, '42501');
+select throws_ok($$ select private.can_edit_wedding('c1111111-1111-1111-1111-111111111111'::uuid) $$, '42501');
 select throws_ok($$ select count(*) from public.weddings $$, '42501');
 
 -- OWNER
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a1111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'owner SELECT');
-update public.weddings set title = 'Owner Edit', updated_at = now() where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
-select is((select title from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 'Owner Edit', 'owner UPDATE');
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'owner SELECT');
+update public.weddings set title = 'Owner Edit', updated_at = now() where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
+select is((select title from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 'Owner Edit', 'owner UPDATE');
 select throws_ok(
-  $$ update public.weddings set created_by = 'a6666666-6666-6666-6666-666666666666'::uuid where id = 'w1111111-1111-1111-1111-111111111111'::uuid $$,
+  $$ update public.weddings set created_by = 'a6666666-6666-6666-6666-666666666666'::uuid where id = 'c1111111-1111-1111-1111-111111111111'::uuid $$,
   '42501'
 );
 set local role postgres;
 select is(
-  (select created_by::text from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid),
+  (select created_by::text from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid),
   'a1111111-1111-1111-1111-111111111111',
   'created_by unchanged after owner attempt'
 );
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a1111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
-delete from public.weddings where id = 'w3333333-3333-3333-3333-333333333333'::uuid;
-select is((select count(*)::int from public.weddings where id = 'w3333333-3333-3333-3333-333333333333'::uuid), 0, 'owner DELETE');
+delete from public.weddings where id = 'c3333333-3333-3333-3333-333333333333'::uuid;
+select is((select count(*)::int from public.weddings where id = 'c3333333-3333-3333-3333-333333333333'::uuid), 0, 'owner DELETE');
 
 -- PARTNER
 select set_config('request.jwt.claims', '{"sub":"a2222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'partner SELECT');
-update public.weddings set title = 'Partner Edit', updated_at = now() where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
-select is((select title from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 'Partner Edit', 'partner UPDATE');
-delete from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'partner SELECT');
+update public.weddings set title = 'Partner Edit', updated_at = now() where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
+select is((select title from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 'Partner Edit', 'partner UPDATE');
+delete from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
 set local role postgres;
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'partner DELETE denied');
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'partner DELETE denied');
 
 -- COLLABORATOR
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a3333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'collaborator SELECT');
-update public.weddings set title = 'Collab Edit', updated_at = now() where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
-select is((select title from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 'Collab Edit', 'collaborator UPDATE');
-delete from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'collaborator SELECT');
+update public.weddings set title = 'Collab Edit', updated_at = now() where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
+select is((select title from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 'Collab Edit', 'collaborator UPDATE');
+delete from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
 set local role postgres;
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'collaborator DELETE denied');
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'collaborator DELETE denied');
 
 -- WEDDING_PLANNER
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a4444444-4444-4444-4444-444444444444","role":"authenticated"}', true);
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'planner SELECT');
-update public.weddings set title = 'Planner Edit', updated_at = now() where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
-select is((select title from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 'Planner Edit', 'planner UPDATE');
-delete from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'planner SELECT');
+update public.weddings set title = 'Planner Edit', updated_at = now() where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
+select is((select title from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 'Planner Edit', 'planner UPDATE');
+delete from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
 set local role postgres;
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'planner DELETE denied');
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'planner DELETE denied');
 
 -- VIEWER
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a5555555-5555-5555-5555-555555555555","role":"authenticated"}', true);
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'viewer SELECT');
-update public.weddings set title = 'Viewer Hack', updated_at = now() where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'viewer SELECT');
+update public.weddings set title = 'Viewer Hack', updated_at = now() where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
 set local role postgres;
-select is((select title from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 'Planner Edit', 'viewer UPDATE denied');
+select is((select title from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 'Planner Edit', 'viewer UPDATE denied');
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a5555555-5555-5555-5555-555555555555","role":"authenticated"}', true);
-delete from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
+delete from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
 set local role postgres;
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'viewer DELETE denied');
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'viewer DELETE denied');
 
 -- NON-MEMBER
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a6666666-6666-6666-6666-666666666666","role":"authenticated"}', true);
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 0, 'non-member SELECT denied');
-update public.weddings set title = 'Outsider', updated_at = now() where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 0, 'non-member SELECT denied');
+update public.weddings set title = 'Outsider', updated_at = now() where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
 set local role postgres;
-select is((select title from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 'Planner Edit', 'non-member UPDATE denied');
+select is((select title from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 'Planner Edit', 'non-member UPDATE denied');
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a6666666-6666-6666-6666-666666666666","role":"authenticated"}', true);
-delete from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid;
+delete from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid;
 set local role postgres;
-select is((select count(*)::int from public.weddings where id = 'w1111111-1111-1111-1111-111111111111'::uuid), 1, 'non-member DELETE denied');
+select is((select count(*)::int from public.weddings where id = 'c1111111-1111-1111-1111-111111111111'::uuid), 1, 'non-member DELETE denied');
 
 -- Cross-wedding + forged membership
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a1111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
-select is((select count(*)::int from public.weddings where id = 'w2222222-2222-2222-2222-222222222222'::uuid), 0, 'owner A cannot SELECT wedding B');
+select is((select count(*)::int from public.weddings where id = 'c2222222-2222-2222-2222-222222222222'::uuid), 0, 'owner A cannot SELECT wedding B');
 select throws_ok(
   $$ insert into public.wedding_members (wedding_id, user_id, role)
-     values ('w2222222-2222-2222-2222-222222222222'::uuid, 'a1111111-1111-1111-1111-111111111111'::uuid, 'owner') $$,
+     values ('c2222222-2222-2222-2222-222222222222'::uuid, 'a1111111-1111-1111-1111-111111111111'::uuid, 'owner') $$,
   '42501'
 );
 
 -- Editor (partner) cannot change created_by
 select set_config('request.jwt.claims', '{"sub":"a2222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
 select throws_ok(
-  $$ update public.weddings set created_by = 'a2222222-2222-2222-2222-222222222222'::uuid where id = 'w1111111-1111-1111-1111-111111111111'::uuid $$,
+  $$ update public.weddings set created_by = 'a2222222-2222-2222-2222-222222222222'::uuid where id = 'c1111111-1111-1111-1111-111111111111'::uuid $$,
   '42501'
 );
 
