@@ -12,7 +12,7 @@ Calculation: Phase 0–2 complete (22%). Data foundation is merged at `13571dd` 
 | GitHub sync | DEVOPS-01 | EDE-GIT-001 | DONE | 100% | CI green | synced | — |
 | Supabase foundation | SUPABASE-01 | EDE-DATA-001 | MERGED | see baseline | pgTAP+auth e2e | #1 | — |
 | Security harden R1 | SECURITY-01 | EDE-DATA-001-R1 | MERGED | see baseline | role matrix + local Auth E2E | #1 | — |
-| Route namespace | ARCH-01 | EDE-ARCH-001 | LOCKED | n/a | docs only | branch `chore/ede-arch-001-route-convention` | Wave A rebase not started |
+| Route namespace | ARCH-01 | EDE-ARCH-001 | LOCKED | n/a | docs only | [#8](https://github.com/kmgod2021/edenida.com/pull/8) | Do not merge until review; Wave A rebase not started |
 | 3 Wedding workspace | — | — | NOT_STARTED | 0% | — | — | Rebase Wave A onto ADR-005 routes |
 
 ## Route namespace lock (ADR-005)
@@ -44,5 +44,5 @@ Normative detail: `docs/adr/ADR-005-authenticated-public-route-namespace.md` and
 - DB tests: official `supabase test db` (CI); no custom pgTAP parser
 
 ## Open blockers
-1. Merge the route-convention PR, then rebase Wave A onto ADR-005 (rebase is not part of this lock)
+1. Review PR [#8](https://github.com/kmgod2021/edenida.com/pull/8) (do not merge from this task), then rebase Wave A onto ADR-005
 2. Vercel project (later)
