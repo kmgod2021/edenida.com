@@ -12,3 +12,5 @@ MVP publishes at `edenida.com/w/{slug}`. Reserve unique slugs and host-aware mid
 ## Consequences
 + Faster MVP publish loop
 − Brand vanity URLs deferred
+
+Authenticated management is not part of this public path. Member modules use `/app/weddings/[id]/…` (ADR-005). Internal planning and finance are not served under `/w/[slug]`.

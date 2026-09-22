@@ -6,18 +6,20 @@ Edenida is a multi-tenant wedding planning SaaS. Tenancy root = **Wedding**. Aut
 ```
 [Browser]
    │
-   ├─ App (authenticated)  ──► Next.js App Router (Vercel)
-   │                              │
-   │                              ├─ RSC / Server Actions
+   ├─ /app/weddings/[id]/…   ──► Next.js App Router (Vercel)
+   │   authenticated              │
+   │   wedding UUID               ├─ RSC / Server Actions
    │                              └─ Supabase client (user JWT)
    │
-   └─ Public /w/[slug]     ──► Next.js (cached where safe)
-                                  │
-                                  ├─ Public site reads (RLS anon policies)
-                                  └─ RSVP submit (token-validated server path)
-                                           │
-                                   Supabase PostgreSQL + Auth + Storage
+   └─ /w/[slug]/…            ──► Next.js (cached where safe)
+       public site + RSVP           │
+                                    ├─ Public site reads (RLS anon policies)
+                                    └─ RSVP submit (token-validated server path)
+                                             │
+                                     Supabase PostgreSQL + Auth + Storage
 ```
+
+Member modules (website editor, guests admin, planning, budget, vendors, settings) are children of `/app/weddings/[id]`. The published site and public RSVP stay on `/w/[slug]`. See ADR-005. A global `/app/finance` route is out of the model: money and vendors resolve through the current `wedding_id`.
 
 ## 2. Bounded contexts
 | Context | Owns |

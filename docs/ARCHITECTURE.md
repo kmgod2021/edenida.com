@@ -24,9 +24,18 @@ src/
   app/
     (marketing)/          # home, pricing later
     (auth)/               # login, signup
-    (app)/                # authenticated shell
-      w/[weddingId]/     # workspace modules
-    w/[slug]/             # PUBLIC wedding website
+    app/                  # authenticated shell → /app
+      weddings/
+        new/              # /app/weddings/new
+        [id]/             # wedding UUID; all member modules
+          website/
+          guests/         # + households, rsvp (admin)
+          planning/
+          budget/
+          vendors/
+          settings/
+    w/[slug]/             # PUBLIC wedding website → /w/[slug]
+      rsvp/               # + rsvp/confirmation
     api/                  # selective route handlers
   components/
     ui/                   # shadcn
@@ -74,9 +83,58 @@ Hero, Countdown, OurStory, Couple, WeddingDate, Events, Ceremony, Reception, Sch
 Same content; different React presenters under `public-site/templates/{id}`.
 
 ### Routing
-- Builder: `/(app)/w/[weddingId]/website`
-- Public: `/w/[slug]` (+ `/rsvp`)
-- Future: middleware host mapping for `{slug}.edenida.com`
+Locked in [ADR-005](adr/ADR-005-authenticated-public-route-namespace.md). `[id]` is the wedding UUID. `[slug]` is the public site identifier. `/app/**` is authenticated. `/w/**` is public. No member-management feature is served under `/w/**`.
+
+Authenticated:
+
+```text
+/app
+/app/weddings/new
+/app/weddings/[id]
+/app/weddings/[id]/website
+/app/weddings/[id]/guests
+/app/weddings/[id]/guests/households
+/app/weddings/[id]/guests/rsvp
+/app/weddings/[id]/planning
+/app/weddings/[id]/budget
+/app/weddings/[id]/vendors
+/app/weddings/[id]/settings
+```
+
+Public (ADR-004 slug; hostnames later):
+
+```text
+/w/[slug]
+/w/[slug]/rsvp
+/w/[slug]/rsvp/confirmation
+```
+
+Rules:
+
+1. `/app/w/[id]` is deprecated before Wave A integration.
+2. `/w/[slug]/planning` is not internal planning.
+3. `/app/finance` is not a finance route; budget and vendors are wedding-scoped.
+4. The website editor is authenticated. The published site is public.
+5. Public RSVP stays on `/w/[slug]/rsvp`. Internal RSVP admin stays on `/app/weddings/[id]/guests/rsvp`.
+6. Authenticated modules resolve data through the route `id` (`wedding_id`).
+
+Filesystem note: `src/app/app/` is a real URL segment (`/app`), not a route group. A group named `(app)` would drop `/app` from the URL.
+
+#### Wave A integration route map
+
+Use this map when rebasing feature branches onto the Data Foundation baseline. Do not treat the “current” column as supported.
+
+| Track | Current Wave A route | Locked route |
+|---|---|---|
+| Workspace | `/app/w/[weddingId]` | `/app/weddings/[id]` |
+| Website editor | `/app/w/[weddingId]/website` | `/app/weddings/[id]/website` |
+| Website public | `/w/[slug]` | `/w/[slug]` |
+| Guests | `/app/weddings/[weddingId]/guests` | `/app/weddings/[id]/guests` |
+| RSVP public | `/w/[slug]/rsvp` | `/w/[slug]/rsvp` |
+| Planning | `/w/[slug]/planning` | `/app/weddings/[id]/planning` |
+| Finance | `/app/finance` | `/app/weddings/[id]/budget` + `/vendors` |
+
+Future: host mapping for `{slug}.edenida.com` (ADR-004) does not move member modules onto the public host.
 
 ### Publish
 `status: draft | published`, `published_at`, `is_private`, `slug` unique globally among published.
