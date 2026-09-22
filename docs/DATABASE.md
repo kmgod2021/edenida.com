@@ -94,7 +94,7 @@ See `SECURITY.md`. Pattern:
 ```sql
 create policy "members select"
 on guests for select to authenticated
-using (is_wedding_member(wedding_id));
+using (private.is_wedding_member(wedding_id));
 ```
 
 Public site: narrow `anon` SELECT on published non-sensitive site fields only — **never** guests PII.

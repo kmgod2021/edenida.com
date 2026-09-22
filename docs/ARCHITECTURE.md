@@ -58,7 +58,7 @@ weddings ← wedding_members (role) → user
 all wedding_* resources.wedding_id → membership check
 ```
 
-Helper: `is_wedding_member(wedding_id)` / `has_wedding_role(...)` as `SECURITY DEFINER` with fixed `search_path`.
+Helpers live in `private` (not Data API–exposed): `is_wedding_member`, `is_wedding_owner`, `is_wedding_creator`, `can_edit_wedding` — `SECURITY DEFINER` with `search_path = ''`. Wedding UPDATE uses `can_edit_wedding` (excludes `viewer`).
 
 ## Website Builder architecture
 

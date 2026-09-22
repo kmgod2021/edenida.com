@@ -44,3 +44,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local credential dumps / CLI helpers (never commit)
+Password and Key Edenida.txt
+*.credentials.txt
+.tmp-project-ref
+.tmp-db-url
+.tmp-db-password
+.tmp-supabase-auth-status
+.env.supabase.cli
