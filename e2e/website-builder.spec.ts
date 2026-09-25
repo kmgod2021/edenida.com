@@ -68,7 +68,10 @@ test.describe("website builder", () => {
   test("shows a load error with a retry", async ({ page }) => {
     await page.goto("/app/w/fixture-wedding/website?fixture=error");
     await expect(page.getByRole("heading", { name: "Impossible de charger le site" })).toBeVisible();
-    await expect(page.getByRole("alert")).toContainText("pas pu charger");
+    // Next.js also injects an empty route announcer with role="alert".
+    // Alert does not name itself from its text, so filter by the message.
+    const loadError = page.getByRole("alert").filter({ hasText: "pas pu charger" });
+    await expect(loadError).toContainText("pas pu charger");
     await page.getByRole("link", { name: "Réessayer" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Site web" })).toBeVisible();
   });
