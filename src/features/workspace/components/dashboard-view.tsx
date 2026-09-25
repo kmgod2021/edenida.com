@@ -45,11 +45,11 @@ export function DashboardView() {
       : `${summary.tasksCompleted} / ${summary.tasksTotal} tâches`;
 
   const modules = [
-    { href: `/app/w/${weddingId}/website`, title: "Site web", detail: websiteLabel(summary.websiteStatus) },
-    { href: `/app/w/${weddingId}/guests`, title: "Invités", detail: guestLabel },
-    { href: `/app/w/${weddingId}/checklist`, title: "Checklist", detail: taskLabel },
-    { href: `/app/w/${weddingId}/budget`, title: "Budget", detail: budgetLabel },
-    { href: `/app/w/${weddingId}/vendors`, title: "Prestataires", detail: "Pas encore commencé" },
+    { href: `/app/weddings/${weddingId}/website`, title: "Site web", detail: websiteLabel(summary.websiteStatus) },
+    { href: `/app/weddings/${weddingId}/guests`, title: "Invités", detail: guestLabel },
+    { href: `/app/weddings/${weddingId}/planning`, title: "Planning", detail: taskLabel },
+    { href: `/app/weddings/${weddingId}/budget`, title: "Budget", detail: budgetLabel },
+    { href: `/app/weddings/${weddingId}/vendors`, title: "Prestataires", detail: "Pas encore commencé" },
   ];
 
   return (
@@ -67,7 +67,7 @@ export function DashboardView() {
       </p>
       <WeddingCountdown
         daysUntil={summary.daysUntil}
-        settingsHref={`/app/w/${weddingId}/settings`}
+        settingsHref={`/app/weddings/${weddingId}/settings`}
       />
       <ProgressSummary percent={summary.progress.percent} steps={summary.progress.steps} />
       <section aria-labelledby="modules-heading" className="mt-12">
@@ -88,7 +88,7 @@ export function DashboardView() {
           ))}
         </ul>
         <Link
-          href={`/app/w/${weddingId}/settings`}
+          href={`/app/weddings/${weddingId}/settings`}
           className={`${quietLinkClass} mt-4 inline-block`}
         >
           Modifier les réglages

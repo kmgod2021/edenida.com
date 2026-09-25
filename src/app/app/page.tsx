@@ -10,7 +10,7 @@ export default async function AppHomePage() {
   const service = await getWeddingWorkspaceService();
   const weddings = await service.listWeddings();
   const only = weddings.length === 1 ? weddings[0] : undefined;
-  if (only) redirect(`/app/w/${only.id}`);
+  if (only) redirect(`/app/weddings/${only.id}`);
 
   return (
     <WorkspaceEntry>

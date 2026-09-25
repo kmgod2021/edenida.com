@@ -88,12 +88,20 @@ test.describe("wedding workspace", () => {
     await expect(
       page.getByRole("link", { name: "Retour au tableau de bord" }),
     ).toBeVisible();
+
+    await page
+      .getByRole("navigation", { name: "Espace mariage" })
+      .getByRole("link", { name: "Planning" })
+      .click();
+    await expect(page).toHaveURL(/\/app\/weddings\/[^/]+\/planning$/);
+    await expect(page.getByRole("heading", { name: "Planning" })).toBeVisible();
+    await expect(page.getByText(/n'est pas encore relié/)).toBeVisible();
   });
 
   test("shows a loading state while the new workspace opens", async ({ page }) => {
     await page.goto("/app/weddings/new");
     await page.getByLabel("Titre du mariage").fill("Camille & Julien");
-    await page.route("**/app/w/**", async (route) => {
+    await page.route(/\/app\/weddings\/(?!new\b)[^/?#]+/, async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1200));
       await route.continue();
     });
@@ -104,7 +112,7 @@ test.describe("wedding workspace", () => {
   });
 
   test("does not open an unknown wedding", async ({ page }) => {
-    await page.goto("/app/w/00000000-0000-4000-8000-000000000099");
+    await page.goto("/app/weddings/00000000-0000-4000-8000-000000000099");
     await expect(
       page.getByRole("heading", { name: "Ce mariage est introuvable" }),
     ).toBeVisible();

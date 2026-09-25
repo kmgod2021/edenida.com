@@ -67,11 +67,11 @@ describe("workspace components", () => {
   it("renders countdown, empty progress, loading, error, and not-found states", () => {
     expect(html(createElement(WeddingCountdown, {
       daysUntil: null,
-      settingsHref: "/app/w/x/settings",
+      settingsHref: "/app/weddings/x/settings",
     }))).toContain("Date à choisir");
     expect(html(createElement(WeddingCountdown, {
       daysUntil: 12,
-      settingsHref: "/app/w/x/settings",
+      settingsHref: "/app/weddings/x/settings",
     }))).toContain(">12<");
 
     const progress = html(createElement(ProgressSummary, {
@@ -98,7 +98,7 @@ describe("workspace components", () => {
     expect(html(createElement(ModuleEmptyState, {
       title: "Invités",
       description: "Aucun invité pour le moment.",
-      actionHref: "/app/w/x",
+      actionHref: "/app/weddings/x",
       actionLabel: "Retour au tableau de bord",
     }))).toContain("Retour au tableau de bord");
   });
@@ -108,7 +108,7 @@ describe("workspace components", () => {
     const items = workspaceNavItems(weddingId);
     const markup = html(createElement(WorkspaceNavList, {
       items,
-      pathname: `/app/w/${weddingId}`,
+      pathname: `/app/weddings/${weddingId}`,
     }));
     expect(markup).toContain('aria-current="page"');
     expect(markup).toContain("Tableau de bord");
@@ -154,6 +154,9 @@ describe("workspace components", () => {
     expect(markup).not.toContain(">Partenaire<");
     expect(markup).toContain("5 réponses sur 12 invités");
     expect(markup).toContain('aria-valuenow="66"');
+    expect(markup).toContain(`/app/weddings/${EXAMPLE_WEDDING_ID}/planning`);
+    expect(markup).not.toContain("/app/w/");
+    expect(markup).not.toContain("/checklist");
 
     expect(() => html(createElement(Consumer))).toThrow(/WeddingProvider/);
     /* eslint-disable react/no-children-prop -- createElement props typing requires children */

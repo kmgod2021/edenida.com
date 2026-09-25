@@ -15,7 +15,7 @@ export function WeddingPicker({ weddings }: { weddings: readonly Wedding[] }) {
         {weddings.map((wedding) => (
           <li key={wedding.id}>
             <Link
-              href={`/app/w/${wedding.id}`}
+              href={`/app/weddings/${wedding.id}`}
               className={`flex items-baseline justify-between gap-4 py-4 text-ink ${focusRing}`}
             >
               <span className="text-lg">{wedding.title}</span>

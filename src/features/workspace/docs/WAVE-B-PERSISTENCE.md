@@ -6,17 +6,21 @@
 
 ## What Wave A owns
 
-UI, domain types, validation, and an in-memory repository stored in the httpOnly cookie `edenida_workspace`. Routes live under `src/app/app/**` because Phase 2 placed the authenticated shell at `src/app/app`, and this task must not move the root layout.
+UI, domain types, validation, and an in-memory repository stored in the httpOnly cookie `edenida_workspace`. Authenticated routes follow ADR-005 under `src/app/app/weddings/[id]`. The public site stays at `/w/[slug]`. This task must not move the root layout.
 
 | Surface | Route |
 |---|---|
 | Onboarding or picker | `/app` |
 | Create wedding | `/app/weddings/new` |
-| Dashboard | `/app/w/[weddingId]` |
-| Settings | `/app/w/[weddingId]/settings` |
-| Module empty states | `/website`, `/guests`, `/checklist`, `/budget`, `/vendors` |
+| Dashboard | `/app/weddings/[id]` |
+| Settings | `/app/weddings/[id]/settings` |
+| Website | `/app/weddings/[id]/website` |
+| Guests | `/app/weddings/[id]/guests` |
+| Planning | `/app/weddings/[id]/planning` |
+| Budget | `/app/weddings/[id]/budget` |
+| Vendors | `/app/weddings/[id]/vendors` |
 
-`docs/ARCHITECTURE.md` shows a future `(app)/w/[weddingId]` group. The domain does not depend on that path. A later layout move can keep these hrefs or redirect them.
+Module pages other than the dashboard and settings are shell placeholders. Planning is the placeholder path; it is not the Planning feature. Wave B persistence is not started.
 
 Phase 8/9 (seating, notes, files, inspiration) are not in the shell.
 

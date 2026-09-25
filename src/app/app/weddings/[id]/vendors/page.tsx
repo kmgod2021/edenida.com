@@ -3,8 +3,8 @@ import { WorkspaceModulePlaceholder } from "@/features/workspace/components/work
 export default async function VendorsModulePage({
   params,
 }: {
-  params: Promise<{ weddingId: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { weddingId } = await params;
-  return <WorkspaceModulePlaceholder moduleId="vendors" weddingId={weddingId} />;
+  const { id } = await params;
+  return <WorkspaceModulePlaceholder moduleId="vendors" weddingId={id} />;
 }

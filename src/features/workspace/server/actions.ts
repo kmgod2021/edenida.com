@@ -47,7 +47,7 @@ export async function createWeddingAction(
     }
     throw error;
   }
-  redirect(`/app/w/${created.wedding.id}`);
+  redirect(`/app/weddings/${created.wedding.id}`);
 }
 
 export async function updateWeddingAction(
@@ -73,12 +73,12 @@ export async function updateWeddingAction(
     throw error;
   }
   if (!updated) return { error: "Ce mariage est introuvable." };
-  redirect(`/app/w/${weddingId}/settings?saved=1`);
+  redirect(`/app/weddings/${weddingId}/settings?saved=1`);
 }
 
 /** Demo seed for the empty onboarding state. Removed when persistence lands. */
 export async function loadExampleWorkspaceAction(): Promise<void> {
   const state = createExampleWorkspaceState(new Date());
   await writeWorkspaceState(state);
-  redirect(`/app/w/${EXAMPLE_WEDDING_ID}`);
+  redirect(`/app/weddings/${EXAMPLE_WEDDING_ID}`);
 }

@@ -3,7 +3,7 @@ export type WorkspaceNavItem = {
     | "dashboard"
     | "website"
     | "guests"
-    | "checklist"
+    | "planning"
     | "budget"
     | "vendors"
     | "settings";
@@ -14,15 +14,15 @@ export type WorkspaceNavItem = {
 
 /** P0 shell only. Seating, notes, files, and inspiration stay out (Phase 8/9). */
 export function workspaceNavItems(weddingId: string): WorkspaceNavItem[] {
-  const base = `/app/w/${weddingId}`;
+  const base = `/app/weddings/${weddingId}`;
   return [
     { id: "dashboard", href: base, label: "Tableau de bord", match: "exact" },
     { id: "website", href: `${base}/website`, label: "Site web", match: "prefix" },
     { id: "guests", href: `${base}/guests`, label: "Invités", match: "prefix" },
     {
-      id: "checklist",
-      href: `${base}/checklist`,
-      label: "Checklist",
+      id: "planning",
+      href: `${base}/planning`,
+      label: "Planning",
       match: "prefix",
     },
     { id: "budget", href: `${base}/budget`, label: "Budget", match: "prefix" },

@@ -25,10 +25,10 @@ async function loadContext(weddingId: string): Promise<WeddingContext | null> {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ weddingId: string }>;
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const { weddingId } = await params;
-  const context = await loadContext(weddingId);
+  const { id } = await params;
+  const context = await loadContext(id);
   return { title: context?.current.wedding.title ?? "Mariage" };
 }
 
@@ -37,10 +37,10 @@ export default async function WeddingWorkspaceLayout({
   params,
 }: {
   children: ReactNode;
-  params: Promise<{ weddingId: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { weddingId } = await params;
-  const context = await loadContext(weddingId);
+  const { id } = await params;
+  const context = await loadContext(id);
   if (!context) {
     return <WorkspaceNotFound />;
   }
@@ -49,7 +49,7 @@ export default async function WeddingWorkspaceLayout({
     <WeddingProvider value={context}>
       <WorkspaceShell
         weddingTitle={context.current.wedding.title}
-        nav={<WorkspaceNav weddingId={weddingId} />}
+        nav={<WorkspaceNav weddingId={id} />}
       >
         {children}
       </WorkspaceShell>

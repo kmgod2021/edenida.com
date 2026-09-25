@@ -11,10 +11,10 @@ const MODULE_COPY = {
     description:
       "La liste d'invités n'est pas encore reliée. Aucune donnée d'invité n'est affichée ni enregistrée ici.",
   },
-  checklist: {
-    title: "Checklist",
+  planning: {
+    title: "Planning",
     description:
-      "La checklist n'est pas encore reliée. Les tâches apparaîtront ici, à partir de la date du mariage.",
+      "Le planning n'est pas encore relié. Les tâches apparaîtront ici, à partir de la date du mariage.",
   },
   budget: {
     title: "Budget",
@@ -42,7 +42,7 @@ export function WorkspaceModulePlaceholder({
     <ModuleEmptyState
       title={copy.title}
       description={copy.description}
-      actionHref={`/app/w/${weddingId}`}
+      actionHref={`/app/weddings/${weddingId}`}
       actionLabel="Retour au tableau de bord"
     />
   );
