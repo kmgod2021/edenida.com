@@ -46,7 +46,7 @@ test.describe("auth real supabase", () => {
     await page.getByRole("button", { name: /Créer mon compte/i }).click();
 
     await expect(
-      page.getByRole("heading", { name: /Votre espace mariage/i }),
+      page.getByRole("heading", { name: "Votre mariage commence ici" }),
     ).toBeVisible({ timeout: 20000 });
     await expect(page.getByText(email)).toBeVisible();
 
@@ -68,7 +68,7 @@ test.describe("auth real supabase", () => {
     await page.getByLabel("Mot de passe").fill(password);
     await page.getByRole("button", { name: /Créer mon compte/i }).click();
     await expect(
-      page.getByRole("heading", { name: /Votre espace mariage/i }),
+      page.getByRole("heading", { name: "Votre mariage commence ici" }),
     ).toBeVisible({ timeout: 20000 });
 
     await page.getByRole("button", { name: /Déconnexion/i }).click();
@@ -82,13 +82,13 @@ test.describe("auth real supabase", () => {
     await page.getByRole("button", { name: /Se connecter/i }).click();
 
     await expect(
-      page.getByRole("heading", { name: /Votre espace mariage/i }),
+      page.getByRole("heading", { name: "Votre mariage commence ici" }),
     ).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(email)).toBeVisible();
 
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: /Votre espace mariage/i }),
+      page.getByRole("heading", { name: "Votre mariage commence ici" }),
     ).toBeVisible();
     await expect(page.getByText(email)).toBeVisible();
 
@@ -102,7 +102,7 @@ test.describe("auth real supabase", () => {
     await page.getByLabel("Mot de passe").fill(password);
     await page.getByRole("button", { name: /Se connecter/i }).click();
     await expect(
-      page.getByRole("heading", { name: /Votre espace mariage/i }),
+      page.getByRole("heading", { name: "Votre mariage commence ici" }),
     ).toBeVisible({ timeout: 15000 });
   });
 });
