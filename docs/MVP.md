@@ -72,8 +72,9 @@ Overall = Σ (phase_completion × weight). Never invent %.
 
 ## 6. Non-blocking defaults (locked for MVP)
 
-- Public URL pattern: `edenida.com/w/{slug}`
-- Future: `{slug}.edenida.com` and custom domains — reserved architecturally
+- Public URL pattern: `edenida.com/w/{slug}` (site, `/rsvp`, `/rsvp/confirmation`)
+- Authenticated management: `/app/weddings/{id}/…` where `{id}` is the wedding UUID (ADR-005)
+- Future: `{slug}.edenida.com` and custom domains — reserved architecturally; they do not move member modules onto the public path
 - Auth provider: email/password + magic link (Supabase); OAuth Google optional post-MVP
 - Currency: CAD default, ISO code on wedding
 - Timezone: wedding timezone setting

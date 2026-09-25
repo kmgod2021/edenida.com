@@ -14,7 +14,7 @@ Benchmarks confirm the must-have loop: **Website ↔ Guests ↔ RSVP ↔ Dashboa
 See `docs/MVP.md`. P0 includes foundation through vendors; P1 seating/timeline/files required for mandate exit journey.
 
 ## C. Architecture
-See `docs/ARCHITECTURE.md` + ADRs 001–004.
+See `docs/ARCHITECTURE.md` + ADRs 001–005. Authenticated vs public route namespaces: ADR-005.
 
 ## D. Wedding Website Builder
 Block-based; content ≠ presentation; 6 templates; `/w/[slug]`; private/public; RSVP section tokenized.
@@ -58,7 +58,7 @@ See `docs/TEST-STRATEGY.md`.
 | Empty remote / no Vercel project yet | local+CI first; human connects GitHub/Vercel |
 
 ## K. Decisions locked (no human block)
-Stack, builder approach, tenancy, slug routing, template list, role enum, weighted completion model.
+Stack, builder approach, tenancy, public slug routing (ADR-004), authenticated `/app/weddings/[id]` namespace (ADR-005), template list, role enum, weighted completion model.
 
 ## L. Decisions needing human later (non-blocking for foundation)
 1. Create Supabase project + provide URL/anon/service keys
@@ -89,7 +89,7 @@ Stack, builder approach, tenancy, slug routing, template list, role enum, weight
 | Product vs architecture contradiction? | None critical |
 | P0 website adequately prioritized? | Yes (weight 20%) |
 | Security as delivery condition? | Yes |
-| Over-documentation? | Lean ADRs only (4) |
+| Over-documentation? | Lean ADRs only (5) |
 | Blocking human decision for coding start? | No — foundation can proceed without live Supabase (env stubs) |
 | One-shot chaos risk? | Controlled by phases + DoD |
 

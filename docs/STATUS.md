@@ -1,8 +1,8 @@
 # Edenida — Project Status
 
-**Last update:** 2026-09-21
+**Last update:** 2026-09-22
 **Overall completion:** **22%** (Phase 3 still closed)
-Calculation: Phase 0–2 complete (22%). EDE-DATA-001-R1 security hardening on PR #1 — does not unlock Phase 3 until Coordinator approval.
+Calculation: Phase 0–2 complete (22%). Data foundation is merged at `13571dd` (PR #1). EDE-ARCH-001 route namespace lock is documentation only and does not add integrated capability or unlock Phase 3.
 
 | Phase | Agent | Task | Status | Completion | Tests | PR | Blocker |
 |---|---|---|---|---:|---|---|---|
@@ -10,9 +10,31 @@ Calculation: Phase 0–2 complete (22%). EDE-DATA-001-R1 security hardening on P
 | 1 Architecture | COORDINATOR | EDE-ARCH-001 | DONE | 100% | n/a | — | — |
 | 2 Foundation | COORDINATOR | EDE-FOUND-002 | DONE | 100% | smoke | synced | — |
 | GitHub sync | DEVOPS-01 | EDE-GIT-001 | DONE | 100% | CI green | synced | — |
-| Supabase foundation | SUPABASE-01 | EDE-DATA-001 | READY_FOR_REVIEW | see PR | pgTAP+auth e2e | #1 | Coordinator gate |
-| Security harden R1 | SECURITY-01 | EDE-DATA-001-R1 | READY_FOR_REVIEW | see PR | role matrix + local Auth E2E | #1 | Coordinator gate |
-| 3 Wedding workspace | — | — | NOT_STARTED | 0% | — | — | Await EDE-DATA-001 approval |
+| Supabase foundation | SUPABASE-01 | EDE-DATA-001 | MERGED | see baseline | pgTAP+auth e2e | #1 | — |
+| Security harden R1 | SECURITY-01 | EDE-DATA-001-R1 | MERGED | see baseline | role matrix + local Auth E2E | #1 | — |
+| Route namespace | ARCH-01 | EDE-ARCH-001 | LOCKED | n/a | docs only | [#8](https://github.com/kmgod2021/edenida.com/pull/8) | Do not merge until review; Wave A rebase not started |
+| 3 Wedding workspace | — | — | NOT_STARTED | 0% | — | — | Rebase Wave A onto ADR-005 routes |
+
+## Route namespace lock (ADR-005)
+
+Authenticated management: `/app/weddings/[id]/…` (`id` = wedding UUID).
+Public experience: `/w/[slug]/…` (`slug` = public identifier).
+
+Deprecated before Wave A integration: `/app/w/[id]`, `/w/[slug]/planning` for internal planning, and `/app/finance`.
+
+### Wave A integration route map
+
+| Track | Current Wave A route | Locked route |
+|---|---|---|
+| Workspace | `/app/w/[weddingId]` | `/app/weddings/[id]` |
+| Website editor | `/app/w/[weddingId]/website` | `/app/weddings/[id]/website` |
+| Website public | `/w/[slug]` | `/w/[slug]` |
+| Guests | `/app/weddings/[weddingId]/guests` | `/app/weddings/[id]/guests` |
+| RSVP public | `/w/[slug]/rsvp` | `/w/[slug]/rsvp` |
+| Planning | `/w/[slug]/planning` | `/app/weddings/[id]/planning` |
+| Finance | `/app/finance` | `/app/weddings/[id]/budget` + `/vendors` |
+
+Normative detail: `docs/adr/ADR-005-authenticated-public-route-namespace.md` and `docs/ARCHITECTURE.md` § Routing.
 
 ## EDE-DATA-001 / R1 notes
 - DEVELOPMENT DB: foundation + RLS recursion fix + `20260921040000_harden_foundation_authorization`
@@ -22,5 +44,5 @@ Calculation: Phase 0–2 complete (22%). EDE-DATA-001-R1 security hardening on P
 - DB tests: official `supabase test db` (CI); no custom pgTAP parser
 
 ## Open blockers
-1. Coordinator review/merge of EDE-DATA-001 (PR #1)
+1. Review PR [#8](https://github.com/kmgod2021/edenida.com/pull/8) (do not merge from this task), then rebase Wave A onto ADR-005
 2. Vercel project (later)
