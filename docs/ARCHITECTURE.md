@@ -58,7 +58,7 @@ docs/
 ```
 
 ## Auth pattern
-Official Supabase SSR for Next.js: cookie-based session, **`src/proxy.ts`** session refresh (Next.js 16 renamed `middleware` → `proxy`), server client for RSC/actions. Service role **server-only** for privileged jobs (e.g. RSVP token resolve via security definer RPC if needed).
+Official Supabase SSR for Next.js: cookie-based session, **`src/proxy.ts`** session refresh (Next.js 16 renamed `middleware` → `proxy`), server client for RSC/actions. RSVP uses the publishable key and the caller's JWT. It does not use `service_role` or `SUPABASE_SECRET_KEY`. Public RSVP RPCs are `SECURITY INVOKER` wrappers. Privileged work stays in non-exposed `SECURITY DEFINER` functions. See ADR-006.
 
 ## Multi-tenancy
 ```
@@ -142,7 +142,7 @@ Future: host mapping for `{slug}.edenida.com` (ADR-004) does not move member mod
 ## RSVP security
 - `invitations.token` (opaque, high entropy)
 - Rate limit RSVP endpoint
-- Token maps to one guest (or household RSVP unit)
+- Token maps to exactly one guest through one invitation; household-level RSVP bearers are out of scope (ADR-006).
 - Never return other guests
 
 ## Seating

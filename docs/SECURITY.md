@@ -27,8 +27,8 @@ User → wedding_members.role → Wedding resources
 - Explicit grants; do not rely on default wide grants
 - Policies per command: SELECT/INSERT/UPDATE/DELETE
 - Use `(select auth.uid())` form for performance
-- `service_role` / secret keys: server only
-- Prefer `SECURITY DEFINER` membership helpers with `search_path = public` (locked)
+- `service_role` keys stay out of the browser. RSVP does not use one (ADR-006).
+- `SECURITY DEFINER` helpers use `search_path = ''` and fully qualified names
 
 ## Public website
 - Published content only
@@ -45,8 +45,8 @@ User → wedding_members.role → Wedding resources
 Path convention: `{wedding_id}/...` + policy membership check.
 
 ## RSVP
-- Opaque tokens (≥128 bits), store hash
-- Rate limit by IP + token
+- Opaque tokens (≥128 bits), store hash. ADR-006 is the token and access model.
+- Rate-limit repeats of the same presented secret. A client IP header is not a security dependency (ADR-006).
 - Single-guest scope responses
 - Validate with Zod; sanitize text
 
