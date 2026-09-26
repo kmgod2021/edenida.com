@@ -2,11 +2,25 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
+const WORKSPACE_FIXTURE_COOKIE = "edenida_workspace";
+
+function dropFixtureCookie(response: NextResponse, request: NextRequest) {
+  if (!request.cookies.has(WORKSPACE_FIXTURE_COOKIE)) return;
+  response.cookies.set(WORKSPACE_FIXTURE_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
   const { url, publishableKey } = getSupabaseEnv();
 
   if (!url || !publishableKey) {
+    dropFixtureCookie(supabaseResponse, request);
     return supabaseResponse;
   }
 
@@ -30,5 +44,6 @@ export async function updateSession(request: NextRequest) {
   // IMPORTANT: do not add logic between createServerClient and getUser().
   await supabase.auth.getUser();
 
+  dropFixtureCookie(supabaseResponse, request);
   return supabaseResponse;
 }

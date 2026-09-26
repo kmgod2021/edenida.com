@@ -1,77 +1,25 @@
-import Link from "next/link";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { createClient } from "@/lib/supabase/server";
-import { signOutAction } from "@/lib/auth/actions";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Espace",
-};
+import { OnboardingPanel } from "@/features/workspace/components/onboarding-panel";
+import { WeddingPicker } from "@/features/workspace/components/wedding-picker";
+import { WorkspaceEntry } from "@/features/workspace/components/workspace-entry";
+import { getWeddingWorkspaceService } from "@/features/workspace/server/get-workspace-service";
+import { requireWorkspaceUser } from "@/features/workspace/server/session";
 
 export default async function AppHomePage() {
-  const configured = isSupabaseConfigured();
-  let email: string | null = null;
-
-  if (configured) {
-    try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      email = user?.email ?? null;
-    } catch {
-      email = null;
-    }
-  }
+  const user = await requireWorkspaceUser();
+  const service = await getWeddingWorkspaceService();
+  const weddings = await service.listWeddings();
+  const only = weddings.length === 1 ? weddings[0] : undefined;
+  if (only) redirect(`/app/weddings/${only.id}`);
 
   return (
-    <main className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-6 py-12">
-      <header className="flex items-center justify-between gap-4">
-        <Link href="/" className="font-display text-3xl text-ink">
-          Edenida
-        </Link>
-        <div className="flex items-center gap-3 text-sm">
-          <Link href="/" className="text-ink-muted transition hover:text-ink">
-            Accueil
-          </Link>
-          {email ? (
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="rounded-md border border-line px-3 py-1.5 text-ink transition hover:bg-bg-elevated"
-              >
-                Déconnexion
-              </button>
-            </form>
-          ) : (
-            <Link
-              href="/login"
-              className="rounded-md border border-line px-3 py-1.5 text-ink transition hover:bg-bg-elevated"
-            >
-              Connexion
-            </Link>
-          )}
-        </div>
-      </header>
-
-      <section className="mt-12 rounded-lg border border-line bg-bg-elevated/80 p-8 shadow-[var(--shadow-soft)]">
-        <h1 className="font-display text-4xl text-ink">Votre espace mariage</h1>
-        <p className="mt-3 max-w-xl text-ink-muted">
-          Foundation Auth + Supabase connectée. La création de projet mariage
-          arrive en Phase 3.
-        </p>
-        <ul className="mt-6 list-disc space-y-2 pl-5 text-sm text-ink-muted">
-          <li>
-            Session :{" "}
-            <strong className="text-ink">
-              {email ? `connecté (${email})` : "anonyme"}
-            </strong>
-          </li>
-          <li>
-            Supabase configuré :{" "}
-            <strong className="text-ink">{configured ? "oui" : "non"}</strong>
-          </li>
-        </ul>
-      </section>
-    </main>
+    <WorkspaceEntry email={user.email ?? null}>
+      {weddings.length === 0 ? (
+        <OnboardingPanel />
+      ) : (
+        <WeddingPicker weddings={weddings} />
+      )}
+    </WorkspaceEntry>
   );
 }

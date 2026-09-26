@@ -1,8 +1,8 @@
 # Edenida — Project Status
 
-**Last update:** 2026-09-22
+**Last update:** 2026-09-25
 **Overall completion:** **22%** (Phase 3 still closed)
-Calculation: Phase 0–2 complete (22%). Data foundation is merged at `13571dd` (PR #1). EDE-ARCH-001 route namespace lock is documentation only and does not add integrated capability or unlock Phase 3.
+Calculation: Phase 0–2 complete (22%). Data foundation is merged at `13571dd` (PR #1). Workspace persistence is implemented on draft PR #3 and is not merged, so it does not raise this percentage.
 
 | Phase | Agent | Task | Status | Completion | Tests | PR | Blocker |
 |---|---|---|---|---:|---|---|---|
@@ -12,8 +12,8 @@ Calculation: Phase 0–2 complete (22%). Data foundation is merged at `13571dd` 
 | GitHub sync | DEVOPS-01 | EDE-GIT-001 | DONE | 100% | CI green | synced | — |
 | Supabase foundation | SUPABASE-01 | EDE-DATA-001 | MERGED | see baseline | pgTAP+auth e2e | #1 | — |
 | Security harden R1 | SECURITY-01 | EDE-DATA-001-R1 | MERGED | see baseline | role matrix + local Auth E2E | #1 | — |
-| Route namespace | ARCH-01 | EDE-ARCH-001 | LOCKED | n/a | docs only | [#8](https://github.com/kmgod2021/edenida.com/pull/8) | Do not merge until review; Wave A rebase not started |
-| 3 Wedding workspace | — | — | NOT_STARTED | 0% | — | — | Rebase Wave A onto ADR-005 routes |
+| Route namespace | ARCH-01 | EDE-ARCH-001 | LOCKED | n/a | docs only | [#8](https://github.com/kmgod2021/edenida.com/pull/8) merged | Baseline `d3c847f` |
+| 3 Wedding workspace | WORKSPACE-02 | EDE-WORKSPACE-002 | READY_FOR_COORDINATOR_REVIEW | 0% | persistence on draft PR; not merged | [#3](https://github.com/kmgod2021/edenida.com/pull/3) draft | Do not merge from this task |
 
 ## Route namespace lock (ADR-005)
 
@@ -43,6 +43,10 @@ Normative detail: `docs/adr/ADR-005-authenticated-public-route-namespace.md` and
 - Auth E2E: real signup/login/logout against **local** Supabase (`enable_confirmations=false`); no `auth.users` SQL seeds
 - DB tests: official `supabase test db` (CI); no custom pgTAP parser
 
+## Workspace persistence (PR #3, not merged)
+
+`EDE-WORKSPACE-002` keeps ADR-005 routes and stores weddings in `public.weddings` / `public.wedding_members` for the signed-in user. Creation goes through `public.create_wedding_with_owner` (security invoker, one transaction, `auth.uid()` only). The fixture cookie is not a runtime source. Phase 3 is not DONE while PR #3 is unmerged. Overall integrated progress stays 22%.
+
 ## Open blockers
-1. Review PR [#8](https://github.com/kmgod2021/edenida.com/pull/8) (do not merge from this task), then rebase Wave A onto ADR-005
+1. PR [#3](https://github.com/kmgod2021/edenida.com/pull/3) is ready for coordinator review and stays draft. Do not merge from this task.
 2. Vercel project (later)
