@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { signUpSchema } from "@/lib/validations/auth";
 
-export function SignUpForm() {
+export function SignUpForm({ emailRedirectTo }: { emailRedirectTo: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,16 +31,23 @@ export function SignUpForm() {
 
     try {
       const supabase = createClient();
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
           data: { full_name: parsed.data.fullName },
+          emailRedirectTo,
         },
       });
 
       if (signUpError) {
         setError(signUpError.message);
+        setPending(false);
+        return;
+      }
+
+      if (!data.session) {
+        setAwaitingConfirmation(true);
         setPending(false);
         return;
       }
@@ -50,6 +58,21 @@ export function SignUpForm() {
       setError(err instanceof Error ? err.message : "Inscription impossible");
       setPending(false);
     }
+  }
+
+  if (awaitingConfirmation) {
+    return (
+      <div
+        role="status"
+        className="mt-8 rounded-md border border-line bg-bg-elevated p-4"
+      >
+        <h2 className="text-lg font-medium text-ink">Check your email</h2>
+        <p className="mt-2 text-sm text-ink-muted">
+          Un lien de confirmation a été envoyé. Ouvrez-le pour activer votre
+          compte, puis connectez-vous.
+        </p>
+      </div>
+    );
   }
 
   return (

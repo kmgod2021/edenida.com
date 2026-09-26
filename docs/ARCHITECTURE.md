@@ -60,6 +60,8 @@ docs/
 ## Auth pattern
 Official Supabase SSR for Next.js: cookie-based session, **`src/proxy.ts`** session refresh (Next.js 16 renamed `middleware` → `proxy`), server client for RSC/actions. Service role **server-only** for privileged jobs (e.g. RSVP token resolve via security definer RPC if needed).
 
+Email confirmation returns to `/auth/callback`, which exchanges the authorization code and redirects to an internal `next` path (default `/app`). Signup sets `emailRedirectTo` from the trusted public origin: `NEXT_PUBLIC_SITE_URL` when valid, otherwise `https://$VERCEL_URL`, otherwise `http://localhost:3000` in development. That origin is not a secret and is not taken from request Host headers. When Auth returns no session, signup stays on a “Check your email” state.
+
 ## Multi-tenancy
 ```
 auth.users → profiles
