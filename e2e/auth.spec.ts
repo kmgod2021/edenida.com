@@ -20,6 +20,87 @@ test.describe("auth pages (ui)", () => {
     await page.getByRole("button", { name: /Se connecter/i }).click();
     await expect(page.getByText(/Adresse e-mail invalide/i)).toBeVisible();
   });
+
+  test("auth callback without a code shows a safe error", async ({ page }) => {
+    await page.goto("/auth/callback");
+    await expect(
+      page.getByRole("heading", { name: /Lien de connexion invalide/i }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/auth\/error$/);
+  });
+
+  test("auth callback failed exchange shows a safe error", async ({ page }) => {
+    await page.goto("/auth/callback?code=not-a-valid-code&next=/app");
+    await expect(
+      page.getByRole("heading", { name: /Lien de connexion invalide/i }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/auth\/error$/);
+    await expect(page.getByText(/not-a-valid-code/)).toHaveCount(0);
+  });
+
+  test("auth callback does not follow an external next", async ({ page }) => {
+    await page.goto(
+      "/auth/callback?code=not-a-valid-code&next=https://evil.example/phish",
+    );
+    await expect(page).toHaveURL(/\/auth\/error$/);
+    expect(page.url()).not.toContain("evil.example");
+  });
+});
+
+test.describe("signup confirmation required", () => {
+  test.skip(!configured, "Supabase env not configured");
+
+  test("shows check your email and sets the callback redirect", async ({
+    page,
+  }) => {
+    let redirectTo: string | null = null;
+
+    await page.route("**/auth/v1/signup**", async (route) => {
+      redirectTo = new URL(route.request().url()).searchParams.get(
+        "redirect_to",
+      );
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "11111111-1111-1111-1111-111111111111",
+          aud: "authenticated",
+          role: "authenticated",
+          email: "confirm@example.test",
+          identities: [],
+          app_metadata: { provider: "email", providers: ["email"] },
+          user_metadata: {},
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        }),
+      });
+    });
+
+    await page.goto("/signup");
+    await page.getByLabel("Nom").fill("Confirm Person");
+    await page.getByLabel("E-mail").fill("confirm@example.test");
+    await page.getByLabel("Mot de passe").fill("TestPass!confirm1");
+    await page.getByRole("button", { name: /Créer mon compte/i }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "Check your email" }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/signup$/);
+    await expect(
+      page.getByRole("heading", { name: /Votre espace mariage/i }),
+    ).toHaveCount(0);
+
+    expect(redirectTo).toBeTruthy();
+    const callback = new URL(redirectTo ?? "");
+    expect(callback.pathname).toBe("/auth/callback");
+    expect(callback.searchParams.get("next")).toBe("/app");
+
+    const configuredSite = process.env.NEXT_PUBLIC_SITE_URL;
+    const expectedOrigin = configuredSite
+      ? new URL(configuredSite).origin
+      : "http://localhost:3000";
+    expect(callback.origin).toBe(expectedOrigin);
+  });
 });
 
 /**

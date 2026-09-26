@@ -33,6 +33,8 @@ Failed pgTAP assertions exit non-zero via the CLI.
 - Publishable key model: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...`
 - Do **not** put `SUPABASE_SECRET_KEY` in the Next.js client or browser bundle
 - Local Auth (`supabase/config.toml`): `enable_confirmations = false` so Playwright can run real signup → session without a mailbox
+- Confirmation links (when confirmation is ON) land on `/auth/callback`. Local `additional_redirect_urls` allows that path. Cloud Auth must allow `<trusted-origin>/auth/callback` as well — do not turn confirmation off to compensate
+- Signup `emailRedirectTo` uses `NEXT_PUBLIC_SITE_URL` (public origin, not a secret), then `https://$VERCEL_URL`, then localhost in development
 - E2E uses the Auth API through the signup/login UI only — no direct writes to `auth.users` / `auth.identities`
 - Cloud DEVELOPMENT may keep email confirmation ON; use local Supabase for reproducible Auth E2E
 
