@@ -14,7 +14,7 @@ Calculation: Phase 0–2 complete (22%). Data foundation is merged at `13571dd` 
 | Security harden R1 | SECURITY-01 | EDE-DATA-001-R1 | MERGED | see baseline | role matrix + local Auth E2E | #1 | — |
 | Route namespace | ARCH-01 | EDE-ARCH-001 | LOCKED | n/a | docs only | [#8](https://github.com/kmgod2021/edenida.com/pull/8) merged | Baseline `d3c847f` |
 | 3 Wedding workspace | WORKSPACE-02 | EDE-WORKSPACE-002 | MERGED | see baseline | persistence + pgTAP + e2e | [#3](https://github.com/kmgod2021/edenida.com/pull/3) | Baseline `207a521` |
-| Auth email callback | AUTH-01 | EDE-AUTH-001 | IN_PROGRESS | n/a | unit + auth e2e | — | Cloud redirect allow list for `/auth/callback` |
+| Auth email callback | AUTH-01 | EDE-AUTH-001 | IN_REVIEW | n/a | unit + auth e2e | [#10](https://github.com/kmgod2021/edenida.com/pull/10) | Cloud redirect allow list for `/auth/callback` |
 
 ## Route namespace lock (ADR-005)
 
