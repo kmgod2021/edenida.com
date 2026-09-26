@@ -142,7 +142,7 @@ Future: host mapping for `{slug}.edenida.com` (ADR-004) does not move member mod
 ## RSVP security
 - `invitations.token` (opaque, high entropy)
 - Rate limit RSVP endpoint
-- Token maps to one guest (or household RSVP unit)
+- Token maps to exactly one guest through one invitation; household-level RSVP bearers are out of scope (ADR-006).
 - Never return other guests
 
 ## Seating
