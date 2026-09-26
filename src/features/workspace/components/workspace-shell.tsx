@@ -7,10 +7,12 @@ export function WorkspaceShell({
   weddingTitle,
   nav,
   children,
+  account = null,
 }: {
   weddingTitle: string;
   nav: ReactNode;
   children: ReactNode;
+  account?: ReactNode;
 }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -24,7 +26,10 @@ export function WorkspaceShell({
         <Link href="/app" className={`font-display text-2xl text-ink ${focusRing}`}>
           Edenida
         </Link>
-        <p className="truncate text-sm text-ink-muted">{weddingTitle}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <p className="truncate text-sm text-ink-muted">{weddingTitle}</p>
+          {account}
+        </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {nav}
@@ -37,8 +42,7 @@ export function WorkspaceShell({
       </div>
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-4 text-xs text-ink-muted md:px-8">
         <p>
-          Aperçu enregistré dans ce navigateur. La sauvegarde sur votre compte
-          sera branchée ensuite.
+          Enregistré sur votre compte.
         </p>
         <Link href="/app/weddings/new" className={quietLinkClass}>
           Nouveau mariage

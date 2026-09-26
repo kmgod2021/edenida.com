@@ -47,13 +47,11 @@ function Consumer() {
 }
 
 describe("workspace components", () => {
-  it("renders onboarding with one primary action and the example fixture", () => {
-    const markup = html(
-      createElement(OnboardingPanel, { loadExampleAction: () => undefined }),
-    );
+  it("renders onboarding with one primary action", () => {
+    const markup = html(createElement(OnboardingPanel));
     expect(markup).toContain("Votre mariage commence ici");
     expect(markup).toContain('href="/app/weddings/new"');
-    expect(markup).toContain("Explorer un exemple");
+    expect(markup).not.toContain("Explorer un exemple");
   });
 
   it("labels the create-wedding fields", () => {

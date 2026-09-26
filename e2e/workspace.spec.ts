@@ -1,6 +1,23 @@
 import { expect, test } from "@playwright/test";
 
+import {
+  login,
+  signUp,
+  workspaceE2EConfigured,
+  workspaceE2ELocal,
+} from "./workspace-session";
+
 test.describe("wedding workspace", () => {
+  test.skip(!workspaceE2EConfigured, "Supabase env not configured");
+  test.skip(
+    !workspaceE2ELocal,
+    "Workspace E2E requires local Supabase (enable_confirmations=false)",
+  );
+
+  test.beforeEach(async ({ page }) => {
+    await signUp(page, "ui");
+  });
+
   test("starts from an empty onboarding state", async ({ page }) => {
     await page.goto("/app");
     await expect(
@@ -11,15 +28,13 @@ test.describe("wedding workspace", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Explorer un exemple" }),
-    ).toBeVisible();
+    ).toHaveCount(0);
   });
 
   test("requires a title before creating a wedding", async ({ page }) => {
     await page.goto("/app/weddings/new");
     await page.getByRole("button", { name: "Créer le mariage" }).click();
-    await expect(
-      page.getByText("Le titre du mariage est requis"),
-    ).toBeVisible();
+    await expect(page.getByText("Le titre du mariage est requis")).toBeVisible();
   });
 
   test("creates a wedding and shows countdown, progress, and empty modules", async ({
@@ -31,6 +46,7 @@ test.describe("wedding workspace", () => {
     await page.getByLabel("Date du mariage").fill("2027-06-12");
     await page.getByRole("button", { name: "Créer le mariage" }).click();
 
+    await expect(page).toHaveURL(/\/app\/weddings\/[0-9a-f-]{36}$/i);
     await expect(
       page.getByRole("heading", { name: "Camille & Julien" }),
     ).toBeVisible();
@@ -43,13 +59,19 @@ test.describe("wedding workspace", () => {
     await expect(page.getByRole("list", { name: "Membres" })).toContainText(
       "Organisateur",
     );
-    await expect(
-      page.getByText("Julien Morel — partenaire indiqué, pas encore membre."),
-    ).toBeVisible();
+    await expect(page.getByText(/Aucun partenaire indiqué/)).toBeVisible();
     await expect(page.getByRole("link", { name: /Aucun invité/ })).toBeVisible();
+    await expect(page.getByText("Enregistré sur votre compte.")).toBeVisible();
+
+    const cookies = await page.context().cookies();
+    expect(cookies.some((cookie) => cookie.name === "edenida_workspace")).toBe(
+      false,
+    );
 
     const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      () =>
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth + 1,
     );
     expect(overflow).toBe(false);
   });
@@ -68,16 +90,13 @@ test.describe("wedding workspace", () => {
     await expect(page.getByRole("banner")).toContainText("Le mariage de Camille");
   });
 
-  test("opens the example fixture and an empty guest module", async ({ page }) => {
-    await page.goto("/app");
-    await page.getByRole("button", { name: "Explorer un exemple" }).click();
+  test("opens empty guest and planning modules", async ({ page }) => {
+    await page.goto("/app/weddings/new");
+    await page.getByLabel("Titre du mariage").fill("Camille & Julien");
+    await page.getByRole("button", { name: "Créer le mariage" }).click();
     await expect(
       page.getByRole("heading", { name: "Camille & Julien" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("meter", { name: "Avancement du mariage" }),
-    ).toHaveAttribute("aria-valuenow", "66");
-    await expect(page.getByText("5 réponses sur 12 invités")).toBeVisible();
 
     await page
       .getByRole("navigation", { name: "Espace mariage" })
@@ -129,5 +148,90 @@ test.describe("wedding workspace", () => {
     await expect(page.getByRole("heading", { name: "Vos mariages" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Premier mariage/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Second mariage/ })).toBeVisible();
+  });
+});
+
+test.describe("wedding workspace persistence", () => {
+  test.skip(!workspaceE2EConfigured, "Supabase env not configured");
+  test.skip(
+    !workspaceE2ELocal,
+    "Workspace E2E requires local Supabase (enable_confirmations=false)",
+  );
+
+  test("keeps a wedding across reload, logout, and a new login", async ({
+    page,
+  }) => {
+    const title = "Mariage persistant";
+    const account = await signUp(page, "persist");
+
+    await page.goto("/app/weddings/new");
+    await page.getByLabel("Titre du mariage").fill(title);
+    await page.getByLabel("Date du mariage").fill("2027-09-04");
+    await page.getByRole("button", { name: "Créer le mariage" }).click();
+
+    await expect(page).toHaveURL(/\/app\/weddings\/[0-9a-f-]{36}$/i);
+    const weddingUrl = page.url();
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    await expect(page.getByText("Enregistré sur votre compte.")).toBeVisible();
+
+    await page.reload();
+    await expect(page).toHaveURL(weddingUrl);
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    await expect(page.getByText(/septembre 2027/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Déconnexion" }).click();
+    await expect(
+      page.getByRole("heading", { name: /One wedding/i }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    await login(page, account.email, account.password);
+    await expect(page.getByRole("heading", { name: title })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page).toHaveURL(weddingUrl);
+
+    const cookies = await page.context().cookies();
+    expect(cookies.some((cookie) => cookie.name === "edenida_workspace")).toBe(
+      false,
+    );
+  });
+
+  test("hides another account's wedding and blocks anonymous access", async ({
+    browser,
+  }) => {
+    const title = "Mariage privé";
+    const owner = await browser.newContext();
+    const ownerPage = await owner.newPage();
+    await signUp(ownerPage, "owner");
+    await ownerPage.goto("/app/weddings/new");
+    await ownerPage.getByLabel("Titre du mariage").fill(title);
+    await ownerPage.getByRole("button", { name: "Créer le mariage" }).click();
+    await expect(ownerPage).toHaveURL(/\/app\/weddings\/[0-9a-f-]{36}$/i);
+    const weddingUrl = ownerPage.url();
+    await expect(ownerPage.getByRole("heading", { name: title })).toBeVisible();
+
+    const outsider = await browser.newContext();
+    const outsiderPage = await outsider.newPage();
+    await signUp(outsiderPage, "outsider");
+    await outsiderPage.goto(weddingUrl);
+    await expect(
+      outsiderPage.getByRole("heading", { name: "Ce mariage est introuvable" }),
+    ).toBeVisible();
+    await expect(
+      outsiderPage.getByRole("heading", { name: title }),
+    ).toHaveCount(0);
+
+    const anonymous = await browser.newContext();
+    const anonymousPage = await anonymous.newPage();
+    await anonymousPage.goto(weddingUrl);
+    await expect(anonymousPage).toHaveURL(/\/login/);
+    await expect(
+      anonymousPage.getByRole("heading", { name: "Connexion" }),
+    ).toBeVisible();
+    await expect(anonymousPage.getByText(title)).toHaveCount(0);
+
+    await owner.close();
+    await outsider.close();
+    await anonymous.close();
   });
 });

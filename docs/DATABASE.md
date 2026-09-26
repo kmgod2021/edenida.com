@@ -40,6 +40,8 @@ weddings 1──* activity_log
 ### wedding_members
 `wedding_id`, `user_id`, `role` ∈ `owner|partner|collaborator|wedding_planner|viewer`, unique(wedding_id,user_id)
 
+Creating a wedding is `public.create_wedding_with_owner(title, wedding_date, timezone, currency)` (security invoker). It inserts the wedding with `created_by = auth.uid()` and exactly one `owner` membership for that same user, in one transaction. It does not accept a user id.
+
 ### wedding_settings
 dashboard prefs, checklist template version, etc.
 

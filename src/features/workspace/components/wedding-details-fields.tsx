@@ -58,7 +58,7 @@ export function WeddingDetailsFields({
           className={inputClass}
         />
         <p id="partner-help" className="text-sm leading-relaxed text-ink-muted">
-          Affiché dans l&apos;espace seulement. Cela ne crée pas de membre :
+          Ce nom n&apos;est pas encore enregistré. Cela ne crée pas de membre :
           l&apos;invitation viendra plus tard.
         </p>
       </div>

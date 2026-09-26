@@ -58,7 +58,8 @@ export type CurrentWedding = {
   members: WeddingMember[];
   /**
    * Name shown before a partner has a user id. Not a membership.
-   * Wave B should persist this on `wedding_settings`, not `wedding_members`.
+   * `wedding_settings` does not exist yet, so the Supabase repository
+   * returns null. Do not invent a wedding_members row for this name.
    */
   partnerDisplayName: string | null;
   /** `profiles.full_name` keyed by user id. Empty until profiles are joined. */

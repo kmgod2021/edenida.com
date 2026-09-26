@@ -8,8 +8,8 @@ import type {
 } from "../domain/types";
 
 /**
- * Local stand-in for the signed-in user until Wave B reads `auth.uid()`.
- * Never use this id with a service-role client.
+ * Viewer id for the in-memory repository used by unit tests.
+ * Runtime workspace code must not send this id to Postgres.
  */
 export const FIXTURE_VIEWER_USER_ID = "11111111-1111-4111-8111-111111111111";
 export const FIXTURE_VIEWER_NAME = "Camille Laurent";

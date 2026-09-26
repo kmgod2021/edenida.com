@@ -14,24 +14,24 @@ export function WorkspaceEntry({
 }) {
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col px-6 py-12">
-      <header className="flex items-center justify-between gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <Link
           href="/"
           className={`font-display text-3xl text-ink ${focusRing}`}
         >
           Edenida
         </Link>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex max-w-full flex-wrap items-center justify-end gap-3 text-sm">
           {email ? (
             <>
-              <p className="text-ink-muted">
+              <p className="min-w-0 break-all text-ink-muted">
                 Session :{" "}
                 <strong className="text-ink">connecté ({email})</strong>
               </p>
               <form action={signOutAction}>
                 <button
                   type="submit"
-                  className={`rounded-md border border-line px-3 py-1.5 text-ink transition hover:bg-bg-elevated ${focusRing}`}
+                  className={`shrink-0 rounded-md border border-line px-3 py-1.5 text-ink transition hover:bg-bg-elevated ${focusRing}`}
                 >
                   Déconnexion
                 </button>

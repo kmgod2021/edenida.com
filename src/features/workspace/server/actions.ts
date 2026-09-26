@@ -1,18 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createExampleWorkspaceState } from "../data/fixtures";
-import { EXAMPLE_WEDDING_ID } from "../data/state";
 import {
   toWeddingDetails,
   weddingDetailsSchema,
 } from "../domain/validation";
 import type { WeddingDetailsInput } from "../domain/types";
-import {
-  WorkspaceFixtureTooLargeError,
-  writeWorkspaceState,
-} from "./cookie-store";
+import { WorkspacePersistenceError } from "../data/errors";
 import { getWeddingWorkspaceService } from "./get-workspace-service";
 
 function invalidMessage(error: { issues: { message: string }[] }): string {
@@ -29,6 +25,11 @@ function parseDetails(input: WeddingDetailsInput) {
   });
 }
 
+function persistenceMessage(error: unknown): string | null {
+  if (error instanceof WorkspacePersistenceError) return error.message;
+  return null;
+}
+
 export async function createWeddingAction(
   input: WeddingDetailsInput,
 ): Promise<{ error: string } | void> {
@@ -40,13 +41,11 @@ export async function createWeddingAction(
     const service = await getWeddingWorkspaceService();
     created = await service.createWedding(toWeddingDetails(parsed.data));
   } catch (error) {
-    if (error instanceof WorkspaceFixtureTooLargeError) {
-      return {
-        error: "Cet aperçu local est plein. La sauvegarde du compte arrive ensuite.",
-      };
-    }
+    const message = persistenceMessage(error);
+    if (message) return { error: message };
     throw error;
   }
+  revalidatePath("/app", "layout");
   redirect(`/app/weddings/${created.wedding.id}`);
 }
 
@@ -65,20 +64,11 @@ export async function updateWeddingAction(
       toWeddingDetails(parsed.data),
     );
   } catch (error) {
-    if (error instanceof WorkspaceFixtureTooLargeError) {
-      return {
-        error: "Cet aperçu local est plein. La sauvegarde du compte arrive ensuite.",
-      };
-    }
+    const message = persistenceMessage(error);
+    if (message) return { error: message };
     throw error;
   }
   if (!updated) return { error: "Ce mariage est introuvable." };
+  revalidatePath(`/app/weddings/${weddingId}`, "layout");
   redirect(`/app/weddings/${weddingId}/settings?saved=1`);
-}
-
-/** Demo seed for the empty onboarding state. Removed when persistence lands. */
-export async function loadExampleWorkspaceAction(): Promise<void> {
-  const state = createExampleWorkspaceState(new Date());
-  await writeWorkspaceState(state);
-  redirect(`/app/weddings/${EXAMPLE_WEDDING_ID}`);
 }

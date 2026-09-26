@@ -8,8 +8,8 @@ import type {
 
 /**
  * Persistence port for the wedding workspace.
- * Wave A: fixture repository. Wave B: Supabase implementation over
- * `weddings` + `wedding_members` — same methods, no second membership table.
+ * Runtime uses `SupabaseWeddingRepository` over `weddings` and
+ * `wedding_members`. The memory repository stays for unit tests.
  */
 export interface WeddingRepository {
   listWeddings(userId: string): Promise<readonly Wedding[]>;

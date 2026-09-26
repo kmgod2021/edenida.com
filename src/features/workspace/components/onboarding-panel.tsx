@@ -1,12 +1,8 @@
 import Link from "next/link";
 
-import { accentLinkClass, quietLinkClass } from "./classes";
+import { accentLinkClass } from "./classes";
 
-export function OnboardingPanel({
-  loadExampleAction,
-}: {
-  loadExampleAction: () => void | Promise<void>;
-}) {
+export function OnboardingPanel() {
   return (
     <section className="max-w-xl">
       <p className="text-sm tracking-wide text-ink-muted">Nouveau projet</p>
@@ -21,11 +17,6 @@ export function OnboardingPanel({
         <Link href="/app/weddings/new" className={accentLinkClass}>
           Créer le mariage
         </Link>
-        <form action={loadExampleAction}>
-          <button type="submit" className={quietLinkClass}>
-            Explorer un exemple
-          </button>
-        </form>
       </div>
     </section>
   );
