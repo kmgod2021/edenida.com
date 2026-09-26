@@ -1,7 +1,7 @@
 # ADR-006: Public RSVP invitation token
 
 ## Status
-Accepted — 2026-09-25. Revised 2026-09-25 (EDE-SEC-RSVP-001-R2) for the database access boundary. The token design below is unchanged.
+Accepted — 2026-09-25. Revised 2026-09-26 (EDE-SEC-RSVP-001-R4). The token design is unchanged. The privileged functions no longer sit in the exposed schema.
 
 ## Context
 Public RSVP is locked by ADR-005 at `/w/[slug]/rsvp` and `/w/[slug]/rsvp/confirmation`. Couple administration stays authenticated at `/app/weddings/[id]/guests/rsvp`. Guests have no Edenida account (ADR-003). The credential is the only thing that may authorize a public read or write.
@@ -44,10 +44,10 @@ Unsalted SHA-256 and signed or JWT-style tokens are rejected. Reasons are in Alt
 | Verifier | `token_hash = HMAC-SHA-256(pepper, "invitation:" \|\| raw_token)`. Store the 32-byte digest (`bytea`). Unique. |
 | Pepper | Vault secret `rsvp_token_pepper`, 32 bytes from a CSPRNG. Not an application env var. Not in Vercel. Not in the client bundle. Not in `public`. |
 | Domain separation | Invitation digests use the `invitation:` label. Session digests use `session:`. Throttle counters use `throttle:`. The three digests must not be interchangeable, and only the first two are stored as credentials. |
-| Lookup | The caller sends the raw invitation token or the raw session secret. `private.rsvp_digest` computes the HMAC. The helper then matches `token_hash` or `session_hash`. Do not look up by email, name, phone, guest id, or slug. |
+| Lookup | The caller sends the raw invitation token or the raw session secret. `rsvp_internal` recomputes the HMAC and matches `token_hash` or `session_hash`. Do not look up by email, name, phone, guest id, or slug. |
 | Comparison | Equality on the `bytea` digest inside the helper. The raw secret is not stored, so nothing in the application compares a raw token to a column. The index lookup is not constant-time. The uniform result and the in-function throttle are the controls. |
 | Malformed input | Wrong prefix, length, or alphabet fails closed with the same public result as an unknown token, and still consumes the throttle. |
-| Hash site | Postgres. `private.rsvp_digest` calls `extensions.hmac` with `search_path = ''`. `pgcrypto` already lives in `extensions` (`supabase/migrations/20260920010000_foundation.sql`). |
+| Hash site | Postgres. `rsvp_internal` calls `extensions.hmac` with `search_path = ''`. The pepper comes only from `rsvp_internal.rsvp_token_pepper()`, which takes no arguments. `pgcrypto` already lives in `extensions` (`supabase/migrations/20260920010000_foundation.sql`). |
 
 `pepper_id` is recorded on the row so operators know which Vault secret produced the digest. The caller does not send `pepper_id`. Rotation cannot rehash rows, because the raw token is not stored. Rotation procedure: write the new Vault secret, revoke every active invitation, couples issue new links. The previous secret is not a second public verifier.
 
@@ -57,14 +57,22 @@ Unsalted SHA-256 and signed or JWT-style tokens are rejected. Reasons are in Alt
 Does RSVP use service_role?                          NO
 Can token_hash authenticate?                         NO
 Can session_hash authenticate?                       NO
-Who computes the HMAC?                               private.rsvp_digest in Postgres
+Who computes the HMAC?                               rsvp_internal, via extensions.hmac
 Where is the pepper stored?                         Supabase Vault secret rsvp_token_pepper
+Who may read that secret?                           rsvp_internal.rsvp_token_pepper() only
 What is the public RPC entrypoint?                  public.exchange_rsvp_session,
                                                      public.read_rsvp,
                                                      public.submit_rsvp
+Public RPC mode?                                    SECURITY INVOKER, no table access
 How does member issue/revoke authorize?             user JWT + private.can_edit_wedding
 Can anon query the tables directly?                 NO
-What prevents a direct RPC from skipping limits?    the throttle runs inside those functions
+What stops distinct-token guessing?                 256-bit entropy, not an IP limiter
+```
+
+```text
+Edenida RSVP application code does not use service_role.
+Edenida RSVP application code does not use SUPABASE_SECRET_KEY.
+No Vercel environment contains an RSVP database-bypass credential.
 ```
 
 ```text
@@ -77,120 +85,167 @@ A stolen `invitations` or `rsvp_sessions` table is not a set of working credenti
 
 ## Database access boundary
 
-This is the authorization model for the token above. It replaces the earlier sentence that the Next.js server would query by digest with `service_role`.
+This is the authorization model for the token above. It replaces any design that queries by digest with `service_role`, and it replaces exposed `SECURITY DEFINER` RPCs.
 
 ### Data API facts in this repository
 
 Verified against the current foundation, not against a generic Supabase sketch:
 
 - `supabase/config.toml` sets `[api] schemas = ["public", "graphql_public"]`. PostgREST exposes tables, views, and functions in those schemas only. `supabase.rpc(...)` resolves a function in an exposed schema. A function in any other schema is not a Data API RPC, even if some role has `EXECUTE`.
-- `extra_search_path = ["public", "extensions"]`. Request `search_path` does not include `private` or `vault`.
-- `private` is not an API schema. `supabase/migrations/20260921040000_harden_foundation_authorization.sql` revokes `USAGE` on `private` from `anon` and grants `USAGE` to `authenticated` so membership helpers can run inside RLS. That grant is not exposure. New RSVP helpers in `private` still need `EXECUTE` revoked from `anon` and from `authenticated`.
+- `extra_search_path = ["public", "extensions"]`. Request `search_path` does not include `private`, `vault`, or `rsvp_internal`. Do not add `rsvp_internal` there.
+- `private` is not an API schema. `supabase/migrations/20260921040000_harden_foundation_authorization.sql` revokes `USAGE` on `private` from `anon` and grants `USAGE` to `authenticated` so membership helpers can run inside RLS. RSVP does not add `anon` `USAGE` on `private`. Membership helpers stay in `private` and are not moved.
 - `pgcrypto` is installed in `extensions`. With `search_path = ''`, HMAC and random bytes must be `extensions.hmac` and `extensions.gen_random_bytes`.
 - Application clients (`src/lib/supabase/server.ts`, `src/lib/supabase/env.ts`) use the publishable key only. `.env.example` marks `SUPABASE_SECRET_KEY` optional and not required for the foundation. RSVP must stay on that model.
 - New objects in `public` can be granted to `anon`, `authenticated`, and `service_role` by default (`auto_expose` in `config.toml`). The future migration revokes those defaults and grants only the roles named below. Do not create these functions in `graphql_public`.
-
-Exposed entrypoints and private helpers are different schemas on purpose.
+- Supabase's rule for this shape: a `SECURITY DEFINER` function in an exposed schema is callable on the Data API with the owner's privileges. Do not put one in `public` or `graphql_public`.
 
 ```text
-Next.js (publishable key, or the member's JWT)
+Data API / Next.js (publishable key, or the member JWT)
         |
         v
-public RPC          Data API schema, narrow signature, fixed return
+public RPC
+SECURITY INVOKER
+search_path = ''
+no table access
         |
         v
-private helper      not in [api] schemas, EXECUTE denied to anon and authenticated
+rsvp_internal function
+SECURITY DEFINER
+search_path = ''
+owner = rsvp_definer
+not in [api] schemas
         |
         v
-Vault pepper, then guest / invitation / RSVP rows
+narrow table operations
 ```
 
-### Exposed RPCs
+### Public wrappers
 
-All of these are `SECURITY DEFINER`, `search_path = ''`, fully qualified names, no dynamic SQL. They return a fixed composite. They do not `RAISE` for an authorization failure.
+These names are the only Data API RPCs. Each one is `SECURITY INVOKER`, `search_path = ''`, and contains no dynamic SQL. It does not read or write a table. It does not touch Vault. It calls exactly one schema-qualified `rsvp_internal` function and returns that function's composite. A bug in the wrapper runs as `anon` or `authenticated`. It does not become `rsvp_definer`.
 
-Anonymous. `EXECUTE` granted to `anon` and to `authenticated` (a signed-in browser may open a link). `auth.uid()` is not consulted. The raw secret is the credential.
+Guest. `EXECUTE` granted to `anon` and to `authenticated`. `auth.uid()` is not consulted. The raw secret is the credential.
 
-| Function | Arguments | Behavior |
+| Wrapper | Calls |
+|---|---|
+| `public.exchange_rsvp_session(raw_token text, slug text)` | `rsvp_internal.exchange_rsvp_session(raw_token, slug)` |
+| `public.read_rsvp(raw_session_secret text, slug text)` | `rsvp_internal.read_rsvp(raw_session_secret, slug)` |
+| `public.submit_rsvp(raw_session_secret text, slug text, payload jsonb)` | `rsvp_internal.submit_rsvp(raw_session_secret, slug, payload)` |
+
+There is no separate resolve RPC. The server action calls `exchange_rsvp_session`, sets the HttpOnly cookie from `session_secret`, and does not serialize that secret into a client component. Later reads and posts call `read_rsvp` and `submit_rsvp` with the cookie value. A later visit with `?t=` calls exchange again.
+
+Member. `EXECUTE` granted to `authenticated` only. Revoked from `anon`.
+
+| Wrapper | Calls | Authorization, enforced inside `rsvp_internal` |
 |---|---|---|
-| `public.exchange_rsvp_session` | `raw_token text`, `slug text` | Verifies the invitation, mints a session with `extensions.gen_random_bytes(32)`, stores only the `session:` digest, returns the raw session secret once plus the public field set. |
-| `public.read_rsvp` | `raw_session_secret text`, `slug text` | Returns that guest's public field set. |
-| `public.submit_rsvp` | `raw_session_secret text`, `slug text`, `payload jsonb` | Updates that guest's current RSVP inside the plus-one and event rules. |
-
-There is no separate resolve RPC. A second raw-token read would be the same authority as exchange. The server action calls `exchange_rsvp_session`, sets the HttpOnly cookie from `session_secret`, and does not serialize that secret into a client component. Later reads and posts call `read_rsvp` and `submit_rsvp` with the cookie value.
-
-Regeneration is not a fourth public function. A later visit with `?t=` calls exchange again.
-
-Authenticated members. `EXECUTE` granted to `authenticated` only. Revoke from `anon`.
-
-| Function | Arguments | Authorization |
-|---|---|---|
-| `public.issue_rsvp_invitation` | `guest_id uuid` | `private.can_edit_wedding` on that guest's wedding. Generates the raw token with `extensions.gen_random_bytes(32)` inside the function. The caller cannot supply a token or a digest. Revokes any other non-revoked invitation for the guest, inserts the new row, returns the raw token once. This is regeneration. |
-| `public.revoke_rsvp_invitation` | `invitation_id uuid` | `private.can_edit_wedding` on that invitation's wedding. Sets `revoked_at`. Does not return a token. |
-| `public.get_rsvp_invitation_metadata` | `guest_id uuid` | `private.is_wedding_member`. Returns id, status, `issued_at`, `expires_at`, `revoked_at`, `last_used_at`. No raw token, no `token_hash`, no pepper. |
+| `public.issue_rsvp_invitation(guest_id uuid)` | `rsvp_internal.issue_rsvp_invitation(guest_id)` | `private.can_edit_wedding`. Generates the raw token with `extensions.gen_random_bytes(32)`. The caller cannot supply a token or a digest. Revokes any other non-revoked invitation for the guest and returns the raw token once. This is regeneration. |
+| `public.revoke_rsvp_invitation(invitation_id uuid)` | `rsvp_internal.revoke_rsvp_invitation(invitation_id)` | `private.can_edit_wedding`. Sets `revoked_at`. Does not return a token. |
+| `public.get_rsvp_invitation_metadata(guest_id uuid)` | `rsvp_internal.get_rsvp_invitation_metadata(guest_id)` | `private.is_wedding_member`. Returns id, status, `issued_at`, `expires_at`, `revoked_at`, `last_used_at`. No raw token, no `token_hash`, no pepper. |
 
 The Next.js member actions call these with the existing cookie session (publishable key + user JWT). They do not impersonate the member with a backend key.
 
 No function parameter is named or typed as a digest. Passing the stored `token_hash` bytes or their hex form in `raw_token` or `raw_session_secret` computes a different HMAC and fails closed.
 
-### Private helpers
+The wrapper may reject a value that is not text before the call. It does not branch on expiry, revocation, or slug.
 
-Schema `private`. Not listed in `[api] schemas`. `EXECUTE` revoked from `PUBLIC`, `anon`, and `authenticated`. `EXECUTE` granted only to the function owner below.
+### `rsvp_internal`
 
-| Helper | Role |
+New schema. It is not `private`, and it is not added to `[api] schemas` or `extra_search_path`. `private` already holds membership helpers, and `authenticated` already has `USAGE` there. Giving `anon` `USAGE` on `private` would widen that schema. RSVP gets its own boundary instead.
+
+```text
+REVOKE ALL ON SCHEMA rsvp_internal FROM PUBLIC;
+GRANT USAGE ON SCHEMA rsvp_internal TO anon, authenticated;
+```
+
+`USAGE` does not publish the schema on PostgREST. Every call is schema-qualified because `search_path` is empty.
+
+Privileged functions:
+
+| Function | Mode |
 |---|---|
-| `private.rsvp_pepper()` | Reads Vault. Never granted to an API role. No public wrapper returns it. |
-| `private.rsvp_digest(label text, raw_secret text)` | `extensions.hmac(label \|\| raw_secret, pepper, 'sha256')`. |
-| `private.rsvp_throttle()` | Applies the limits below before a success result is returned. |
-| `private.rsvp_match_invitation(raw_token text, slug text)` | Digest, lookup, expiry, revocation, slug binding. One failure signal. |
-| `private.rsvp_match_session(raw_session_secret text, slug text)` | Same for a session, which dies with its invitation. |
-| `private.rsvp_public_payload(invitation_id uuid)` | The fixed public column list only. |
+| `rsvp_internal.exchange_rsvp_session(raw_token text, slug text)` | `SECURITY DEFINER`, owner `rsvp_definer` |
+| `rsvp_internal.read_rsvp(raw_session_secret text, slug text)` | `SECURITY DEFINER`, owner `rsvp_definer` |
+| `rsvp_internal.submit_rsvp(raw_session_secret text, slug text, payload jsonb)` | `SECURITY DEFINER`, owner `rsvp_definer` |
+| `rsvp_internal.issue_rsvp_invitation(guest_id uuid)` | `SECURITY DEFINER`, owner `rsvp_definer` |
+| `rsvp_internal.revoke_rsvp_invitation(invitation_id uuid)` | `SECURITY DEFINER`, owner `rsvp_definer` |
+| `rsvp_internal.get_rsvp_invitation_metadata(guest_id uuid)` | `SECURITY DEFINER`, owner `rsvp_definer` |
 
-`authenticated` already has `USAGE` on `private` for membership helpers. That is why `EXECUTE` on these new helpers is revoked from `authenticated`, not merely left to schema invisibility.
+Supporting helpers in the same schema (`rsvp_digest`, match, payload, throttle) are also `SECURITY DEFINER` or are only executable by `rsvp_definer`. They are not Data API RPCs. The public wrapper does not call them. The one internal function it calls may.
 
-### Function owner
+`search_path = ''`. Fully qualified names. No dynamic SQL. They do not `RAISE` for an authorization failure.
 
-Role `rsvp_definer`:
+`EXECUTE` is revoked from `PUBLIC` on every function in the schema.
 
-- `NOLOGIN`, `NOSUPERUSER`, `NOCREATEROLE`, `NOCREATEDB`
-- `BYPASSRLS`, so the functions are not trapped by policies written for `anon`. Table privileges still come only from the grants below. `BYPASSRLS` is not a login and is not `service_role`.
-- The migration must not `GRANT rsvp_definer TO anon` or `TO authenticated`. Those roles must not be able to `SET ROLE rsvp_definer`.
-- the application has no connection string and no JWT for this role
+| Function | `EXECUTE` |
+|---|---|
+| Three guest functions | `anon` and `authenticated` only |
+| Three member functions | `authenticated` only. Not `anon`. |
+| `rsvp_internal.rsvp_token_pepper()` | `rsvp_definer` only. See below. |
+| Other helpers | `rsvp_definer` only |
 
-`BYPASSRLS` does not grant table privileges. The migration grants `rsvp_definer` only:
+`anon` can execute a guest internal function because the invoker wrapper runs as `anon` and must be allowed to call it. That grant is not a PostgREST route: `rsvp_internal` is not an exposed schema, and `anon` is not a login role. `EXECUTE` does not include `SET ROLE`.
+
+Do not `GRANT rsvp_definer` to `anon`, `authenticated`, `authenticator`, `service_role`, or any application user.
+
+### `rsvp_definer`
+
+`NOLOGIN`, `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `BYPASSRLS`.
+
+`BYPASSRLS` is accepted only because all of the following are true:
+
+- the role cannot log in
+- it is not a member of any API role, and no API role is a member of it
+- the exposed wrappers are `SECURITY INVOKER`, not `SECURITY DEFINER`
+- it owns only the non-exposed RSVP functions in `rsvp_internal`
+- table and column grants, not `BYPASSRLS` alone, are the blast radius
+
+`BYPASSRLS` does not grant table privileges and is not `service_role`. The application has no connection string and no JWT for this role. The future migration must record:
+
+```text
+rolcanlogin = false
+rolsuper = false
+rolcreatedb = false
+rolcreaterole = false
+rolbypassrls = true
+```
+
+and must prove `anon`, `authenticated`, and `authenticator` cannot `SET ROLE rsvp_definer`.
+
+Grants to `rsvp_definer`:
 
 - `SELECT`/`INSERT`/`UPDATE`/`DELETE` on invitation and session tables
 - `SELECT`/`INSERT`/`UPDATE`/`DELETE` on the RSVP answer tables the public submit writes
-- column-level `SELECT`/`UPDATE` on the guest columns the public payload and submit need (`id`, `wedding_id`, `first_name`, `plus_one_allowed`, and the RSVP fields the public form is allowed to change). No grant on `private_notes`, `email`, or `phone` unless a later ADR says the public form writes them. This ADR forbids public writes to `private_notes`, email, phone, household, side, and `plus_one_allowed`
+- column-level `SELECT`/`UPDATE` on the guest columns the public payload and submit need (`id`, `wedding_id`, `first_name`, `plus_one_allowed`, and the RSVP fields the public form is allowed to change). No grant on `private_notes`, `email`, or `phone`. Public writes to `private_notes`, email, phone, household, side, and `plus_one_allowed` stay forbidden
 - `SELECT` on the site slug and on the guest's invited events
-- `SELECT` on `vault.decrypted_secrets`
 - `EXECUTE` on `private.can_edit_wedding(uuid)` and `private.is_wedding_member(uuid)`
+- `EXECUTE` on `rsvp_internal.rsvp_token_pepper()`
 
-No grant on `wedding_members`, budget, vendors, storage, or `auth.users`. A buggy statement in these functions cannot read those tables. The existing membership helpers are not modified and are not weakened.
+No grant on `auth.users`, budget, vendors, storage, private files, unrelated wedding tables, or arbitrary reads of `wedding_members`. No `USAGE` on `vault`. No `SELECT` on `vault.decrypted_secrets` or `vault.secrets`. A buggy statement cannot read those objects. The membership helpers are not modified.
 
-Public and member RPCs are owned by `rsvp_definer`. Private helpers are owned by `rsvp_definer`.
+### Pepper
 
-### Pepper placement
+Selected store: **Supabase Vault**, secret name `rsvp_token_pepper`. Not a Vercel variable. Not in `public`.
 
-Selected: **Supabase Vault.** Secret name `rsvp_token_pepper`.
-
-`private.rsvp_pepper()` reads it and nothing else does:
+`rsvp_definer` does not read the view. One function does:
 
 ```text
-select decrypted_secret
-from vault.decrypted_secrets
-where name = 'rsvp_token_pepper'
+rsvp_internal.rsvp_token_pepper()
+owner = postgres
+SECURITY DEFINER
+search_path = ''
+no arguments
 ```
 
-The future migration enables `supabase_vault`, revokes `USAGE` on `vault` and `SELECT` on `vault.decrypted_secrets` from `anon` and `authenticated`, and grants `SELECT` on that view to `rsvp_definer` only. An operator inserts the secret with Vault's create-secret API. No RSVP RPC inserts, updates, selects, or returns it. If the secret is missing, public functions return the uniform invalid result (fail closed) and member issue fails without inventing a token.
+It selects `decrypted_secret` from `vault.decrypted_secrets` where `name = 'rsvp_token_pepper'` and returns that single value. It accepts no name, no id, and no other input. It does not enumerate secrets, return a second row, or return metadata. `EXECUTE` is revoked from `PUBLIC`, `anon`, and `authenticated`, and granted only to `rsvp_definer`. It is not a Data API RPC.
 
-| Placement | DB dump of `invitations` | Next.js compromise | Digest is not a bearer | Anon table access stays denied | Verdict |
-|---|---|---|---|---|---|
-| A. Vault, HMAC in Postgres | Pepper is not in that table. Digest plus pepper is still not invertible at 256 bits, and no RPC accepts the digest. | Process holds the publishable key, which is already public. It does not hold the pepper or a bypass-RLS key. | Yes. The function recomputes the HMAC from the raw secret. | Yes. Tables have no `anon` grants. The definer's grants are not the caller's grants. | **Selected.** |
-| B. `RSVP_TOKEN_PEPPER` in the Next.js environment | The server must send either the raw token (then the database must hash it, and the Vercel pepper is unused) or the digest (then whoever can call that lookup presents a stolen digest as the credential). | A leaked Vercel env leaks the pepper. It still does not, by itself, bypass RLS, but it recreates the digest-as-bearer problem this revision exists to close. | Only if the database never accepts a digest. That requirement pushes the HMAC back into Postgres, which is option A. | Yes, if tables stay ungranted. The bridge credential is the unsolved part. | Rejected. |
-| C. Dedicated login role, `NOBYPASSRLS`, `EXECUTE` only, not `service_role` | Same as wherever the pepper actually sits. This role is a caller, not a secret store. | The server must hold that role's password. Compromise yields a credential the public anon key does not have. | Only if that role's functions refuse a digest. Safe, but it adds a Vercel database secret the publishable-key model was built to avoid. | Yes. | Rejected for RSVP. It is not `service_role`, and it is still a new application credential. |
+The future migration enables `supabase_vault` and revokes `USAGE` on `vault` and `SELECT` on `vault.decrypted_secrets` from `anon`, `authenticated`, and `rsvp_definer`. An operator inserts the secret with Vault's create-secret API. No RSVP RPC returns the pepper. If it is missing, public calls return `invalid` and member issue fails without inventing a token.
 
-Vault is the pepper. Option C is not added as a gateway password. The platform `service_role` key continues to exist inside Supabase and continues to bypass RLS for anyone who holds it. Edenida's RSVP server, member server, and Vercel project do not hold it.
+HMAC stays in Postgres. `rsvp_internal` calls `extensions.hmac` after reading the pepper through `rsvp_internal.rsvp_token_pepper()` only. The caller never supplies a digest.
+
+| Placement | Verdict |
+|---|---|
+| A. Vault, read by the postgres-owned single-secret function | **Selected.** A dump of `invitations` has no pepper. Pepper plus digest does not invert a 256-bit token, and no RPC accepts the digest. Next.js holds the publishable key, which is already public. |
+| B. Pepper in the Next.js environment | Rejected. The database must hash the raw token, so a Vercel pepper is unused, or the server sends a digest and that digest becomes a bearer. |
+| C. Dedicated login role | Rejected. It is not `service_role`, and it is still a new application credential. |
 
 ### Table access
 
@@ -203,11 +258,11 @@ Vault is the pepper. Option C is not added as a gateway password. The platform `
 
 `authenticated` has no table privileges on `invitations` or `rsvp_sessions`. PostgREST `select=*` cannot return `token_hash` or `session_hash`. Do not create a `public` view over those tables. Member metadata goes through `public.get_rsvp_invitation_metadata` only.
 
-RLS stays enabled on every new table anyway. Grants are the control that keeps the digests off the API. Policies for a later member read of guests and RSVP answers must not be pointed at invitation or session rows.
+RLS stays enabled on every new table. Grants keep the digests off the API. Policies for a later member read of guests and RSVP answers must not point at invitation or session rows.
 
 ### Member authorization
 
-`issue_rsvp_invitation` and `revoke_rsvp_invitation` call `private.can_edit_wedding` on the wedding that owns the guest or the invitation. `get_rsvp_invitation_metadata` calls `private.is_wedding_member`. Both helpers already exist, use `auth.uid()`, and keep `search_path = ''`. `SECURITY DEFINER` does not replace `auth.uid()` with the function owner, so the member JWT is still the actor. Viewers fail `can_edit_wedding` and cannot issue or revoke. This ADR does not change helper bodies, grants, or role meanings.
+`rsvp_internal.issue_rsvp_invitation` and `rsvp_internal.revoke_rsvp_invitation` call `private.can_edit_wedding` on the wedding that owns the guest or the invitation. `rsvp_internal.get_rsvp_invitation_metadata` calls `private.is_wedding_member`. Both helpers already exist, use `auth.uid()`, and keep `search_path = ''`. They stay in `private`. `SECURITY DEFINER` does not replace `auth.uid()` with the function owner, so the member JWT is still the actor. Viewers fail `can_edit_wedding` and cannot issue or revoke. This ADR does not change helper bodies or their role meanings, and it does not grant `anon` `USAGE` on `private`.
 
 ### Uniform public failure
 
@@ -222,34 +277,48 @@ These are one result, `status = 'invalid'`, with an empty payload:
 - a stored `token_hash` or `session_hash` presented as the raw secret
 - missing Vault secret on the public path
 
-The function does not `RAISE` for any of those. PostgREST then cannot turn expiry, a unique violation, or a missing row into different HTTP errors or different `message` strings. Next.js maps `invalid` to the single HTTP 404 page. Direct Data API callers receive the same JSON.
+The internal function does not `RAISE` for any of those. PostgREST then cannot turn expiry, a unique violation, or a missing row into different HTTP errors or different `message` strings. Next.js maps `invalid` to the single HTTP 404 page. Direct Data API callers receive the same JSON.
 
 `status = 'locked'` is returned only after the raw secret has already matched and the couple has set `rsvp_locked_at`. It is not used for an unknown secret.
 
 `status = 'validation'` is returned only after the session has matched, and only for plus-one and event rules. It does not echo other guests.
 
-Normalization is in the database function first. Next.js only maps the status codes. It must not inspect SQLSTATE from these RPCs, because a successful call does not raise.
+Normalization is in the internal function first. Next.js only maps the status codes. It must not inspect SQLSTATE from these RPCs, because a successful call does not raise.
 
 ### Rate limiting
 
-Direct Data API access is accepted, and the throttle protects that entrypoint.
+Direct Data API access to the public wrappers is accepted. Those wrappers call `rsvp_internal`, and the limiter runs inside that database call. A website `GET` or `HEAD` is not what persists a counter. Supabase cannot write a limiter row from a read-only `GET` or `HEAD`.
 
-`anon` holds the publishable key, and that key is public (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`). Granting `EXECUTE` to `anon` means PostgREST is on the internet. A Next.js-only limiter would leave that path unthrottled. A private database login used only by Next.js would close the path, and it would also put a new secret in the server. That is option C above, and it was rejected. The throttle therefore lives in `private.rsvp_throttle`, which every public RPC calls before it returns a matched payload.
+Distinct raw tokens are not stopped by a shared bucket. A 256-bit uniform secret makes online discovery computationally infeasible. **That entropy is the resistance to distinct-token guessing.** An IP header is not.
 
-The client IP is taken from the edge headers PostgREST already exposes (`request.headers`). It is not a function argument. A caller cannot pick their own bucket. If those headers are absent, the call uses one shared missing-header bucket with the same numbers, so a non-HTTP call does not skip the limit.
+Do not treat `x-forwarded-for` or `cf-connecting-ip` as a trusted client address. `current_setting('request.headers', true)` includes headers the caller sent. The leftmost `x-forwarded-for` value is the spoofable end of that list. Do not use `Sb-Forwarded-For`. Auth honors that header only for a secret key, and RSVP does not take a secret key.
 
-Counters live in `private.rsvp_throttle_buckets` (no API exposure, no grants to `anon` or `authenticated`, short TTL). The per-secret miss key is `private.rsvp_digest('throttle:', raw_secret)`, which is not the invitation digest and is not accepted by any RPC. Do not store the raw secret. Do not retain the IP outside this TTL store.
+Two limits are in force. Numbers are initial defaults, not a tuned product guarantee.
 
-| Key | Limit | Window |
+| Key | Limit | What it does not do |
 |---|---|---|
-| Edge IP | 30 requests | 10 minutes |
-| Edge IP | 100 requests | 24 hours |
-| Throttle digest of the presented secret | 10 misses | 1 hour |
-| Invitation id, after a match | 20 submits | 1 hour |
+| `throttle:` digest of the presented raw secret | 10 misses / 1 hour | Does not stop a caller who changes the raw token on every guess |
+| Invitation id, after a match | 20 submits / 1 hour | Does not run before the secret has matched |
 
-Over the limit, the function returns `status = 'rate_limited'` and does not include a match or a mismatch. Next.js maps that to HTTP 429. The same status is returned for a live secret and a dead one. Shared NATs will hit the IP caps first. Do not revoke a valid invitation because of misses.
+The `throttle:` digest is not the invitation digest and is not accepted by any RPC. The counter table is `rsvp_internal.rsvp_throttle_buckets`: no API exposure, no grants to `anon` or `authenticated`, short TTL. Do not store the raw secret, the invitation digest, or the session digest.
 
-Next.js may apply the same numbers earlier. That is an extra layer. The database function is the one that covers `supabase.rpc` from a browser.
+Over the limit, the function returns `status = 'rate_limited'` with no match and no mismatch. Next.js maps that to HTTP 429. The same status is returned for a live secret and a dead one. Do not revoke a valid invitation because of misses.
+
+```text
+IP RATE LIMIT = NOT A SECURITY DEPENDENCY
+```
+
+The old 30-requests-in-10-minutes and 100-requests-in-24-hours figures are candidate defaults for a future IP limiter only. They are not guarantees.
+
+An IP bucket may be turned on after a test that does all of the following:
+
+1. Call the public Data API RPC directly.
+2. Spoof `X-Forwarded-For`.
+3. Spoof `CF-Connecting-IP`.
+4. Show that the limiter key stays the gateway's client address.
+5. Name that header or value in the implementation note.
+
+Until that test passes, forged forwarding headers are not a bucket key.
 
 The HttpOnly cookie is what a foreign page would need for CSRF against the Next.js route. `SameSite=Lax` plus an `Origin` allowlist stay on that route. A direct RPC call does not receive the cookie. It has to present the raw secret, which is the same bar as holding the link.
 
@@ -316,7 +385,7 @@ Distribution and re-entry URL:
 
 Rules:
 
-1. `exchange_rsvp_session` sends the raw token into `private.rsvp_match_invitation`. The helper computes the digest. Do not query guests by slug, and do not accept a digest from the caller.
+1. `public.exchange_rsvp_session` calls `rsvp_internal.exchange_rsvp_session`. That function recomputes the digest. Do not query guests by slug, and do not accept a digest from the caller.
 2. The slug must equal that wedding's `wedding_sites.slug`. Any other slug, including another real wedding, fails closed.
 3. Do not redirect a bearer to the "correct" slug. A redirect would confirm that the token is live and would reveal which wedding it belongs to.
 4. Unpublished or unknown slugs use the same invalid-link response. A draft site does not become readable because a token was attached.
@@ -334,7 +403,7 @@ The RSVP routes load no third-party scripts, fonts, or analytics. Access logs mu
 Before production traffic, a successful verify also issues a **separate** browser session and redirects (303) to the same path without `t`:
 
 - Cookie value: the raw session secret returned once by `public.exchange_rsvp_session`. It is generated in Postgres with `extensions.gen_random_bytes(32)`. It is not the invitation token.
-- Store `private.rsvp_digest('session:', raw_session_secret)` only.
+- Store the `session:` digest from `rsvp_internal` only. The label is not `invitation:` and not `throttle:`.
 - Flags: `HttpOnly`, `Secure`, `SameSite=Lax`, `Path` limited to that wedding's `/w/[slug]/rsvp`.
 - Lifetime: at most 12 hours, and never past the invitation `expires_at`. Revoking the invitation revokes its sessions.
 - POST requires the cookie (after the exchange) and an `Origin` allowlist match for this application. `SameSite=Lax` is not the only CSRF control once a cookie exists.
@@ -451,7 +520,7 @@ No raw cookie value.
 The current answer stays one row per guest (plus per-event answers for events that guest was invited to). `invitation_id` records which credential last wrote a guest-sourced submit; a couple-sourced edit may leave it null. Public writes update that row. They do not insert a second current RSVP on replay.
 
 ### Attempt metadata
-Do not add a durable public table of failed tokens. Throttle counters live in `private.rsvp_throttle_buckets` with a short TTL. They may store the `throttle:` digest. They must not store the raw secret, the invitation digest, or the session digest.
+Do not add a durable public table of failed tokens. Throttle counters live in `rsvp_internal.rsvp_throttle_buckets` with a short TTL. They may store the `throttle:` digest. They must not store the raw secret, the invitation digest, or the session digest. An IP is not stored as a security key unless the gateway test in Rate limiting has passed.
 
 ### `rsvp_locked_at`
 One timestamp on the wedding or wedding settings. Null means guests with a live invitation may still update.
@@ -472,7 +541,7 @@ These tests are a gate for the persistence slice. They do not exist yet, and thi
 | Wrong wedding | Live token presented on another wedding's slug, or on a slug that is not the bound wedding: uniform 404. No redirect to the real slug. No data from either wedding beyond that body. |
 | Other invitation | Token A cannot read or write the guest, events, or RSVP of token B, including two guests in the same household. |
 | Enumeration | No name, email, or guest-id lookup. Responses for unknown tokens match each other. Public JSON contains no second guest, no household roster, no digest, no private note. `anon` SELECT on guest tables is denied. |
-| Anonymous limits | Missing token is the uniform 404. IP and miss limits return a generic 429 without confirming a match. A valid invitation is not revoked solely by misses. |
+| Anonymous limits | Missing token is the uniform 404. The repeat-secret cap returns a generic 429 without confirming a match. A valid invitation is not revoked solely by misses. IP is not required for that result. |
 | Replay / update | Second submit changes the same RSVP in place. Identical resubmit succeeds. Confirmation GET after accept or decline shows only that guest. After revoke, the same body is a 404. After RSVP lock, a valid token does not write. |
 | Plus-one | `plus_one_allowed = false` rejects a plus-one name or attendance flag. Decline cannot record a plus-one. The submit does not insert a guest and does not issue a token. |
 | Events | An event id the guest was not invited to is rejected or dropped. Other events are not listed. |
@@ -485,8 +554,14 @@ These tests are a gate for the persistence slice. They do not exist yet, and thi
 | Digest as bearer | Presenting the stored `token_hash`, or its hex, as `raw_token` returns the same `invalid` result as a random token. Presenting `session_hash` as `raw_session_secret` does the same. |
 | Privileged key | The RSVP server path and member issue/revoke do not read `SUPABASE_SECRET_KEY` and do not construct a service-role client. |
 | RPC output | On success, `exchange_rsvp_session`, `read_rsvp`, and `submit_rsvp` return only the public field set, including when called on the Data API. The pepper, `token_hash`, `session_hash`, email, phone, private notes, and any other guest are absent. `exchange_rsvp_session` may return the new raw session secret once, to the server action only. |
-| Private helper privileges | `anon` and `authenticated` cannot `EXECUTE` `private.rsvp_pepper` or the other private RSVP helpers. |
-| Exposed function privileges | `anon` can `EXECUTE` only `exchange_rsvp_session`, `read_rsvp`, and `submit_rsvp`. `anon` cannot `EXECUTE` issue, revoke, or metadata. `authenticated` can `EXECUTE` the member functions. |
+| Private helper privileges | `anon` and `authenticated` cannot `EXECUTE` `rsvp_internal.rsvp_token_pepper()` or the supporting helpers. They also cannot `EXECUTE` functions in `private` beyond the membership grants that already exist for `authenticated`. |
+| Function exposure | Every `public` RSVP RPC is `SECURITY INVOKER` (`prosecdef = false`). No exposed RSVP function is `SECURITY DEFINER`. Every `rsvp_internal` privileged function is `SECURITY DEFINER`. `rsvp_internal` is not in `[api] schemas`. |
+| Role attributes | `rsvp_definer` has `rolcanlogin = false`, `rolsuper = false`, `rolcreatedb = false`, `rolcreaterole = false`, `rolbypassrls = true`. |
+| SET ROLE | `anon`, `authenticated`, and `authenticator` cannot `SET ROLE rsvp_definer`. |
+| Exposed function privileges | `anon` can `EXECUTE` only the three guest wrappers and their three `rsvp_internal` targets. `anon` cannot `EXECUTE` issue, revoke, or metadata. `authenticated` can `EXECUTE` the member wrappers. Membership is still checked inside `rsvp_internal`. |
+| Vault isolation | `anon`, `authenticated`, and `rsvp_definer` cannot `SELECT` `vault.decrypted_secrets`. `rsvp_internal.rsvp_token_pepper()` takes no arguments, returns only that secret, and is not a Data API RPC. No public or member RPC returns the pepper. |
+| Forged forwarding headers | A direct Data API call that sends `X-Forwarded-For` or `CF-Connecting-IP` does not create a trusted IP bucket. IP is not a security dependency until the gateway test passes and names its source. |
+| Repeat and submit caps | The same presented secret trips the `throttle:` miss cap. After a match, submits trip the per-invitation cap. A different raw token on each guess is not stopped by those caps. |
 | Member authorization | Issue and revoke fail for a non-member and for a viewer. They succeed for a role that passes `private.can_edit_wedding`, using that user's JWT. |
 | Cross-wedding | A token or session from wedding A, sent with wedding B's slug, is `invalid` and writes neither wedding. |
 
@@ -498,19 +573,19 @@ These tests are a gate for the persistence slice. They do not exist yet, and thi
 + Wave A must replace `hashInvitationToken` (unsalted SHA-256) and the `edn_fix_` fixtures. Those strings are not this design.
 − Each environment needs the Vault secret `rsvp_token_pepper`. A missing secret fails closed. It is not a Vercel env var.
 − Pepper rotation invalidates outstanding links. That is accepted.
-− The cookie exchange, log redaction, and the in-database throttle are mandatory before production.
-− `rsvp_definer` has `BYPASSRLS` and a short grant list. Those grants are the blast radius of a bug in the functions. They must not grow to cover unrelated tables.
+− The cookie exchange, log redaction, and the repeat-secret throttle are mandatory before production. An IP limiter is not.
+− `rsvp_definer` has `BYPASSRLS` and a short grant list. Those grants are the blast radius of a bug in `rsvp_internal`. They must not grow to cover unrelated tables or Vault.
 − Household-level RSVP links are out of scope. A future product change needs a new ADR.
 − This decision does not add tables, RLS, routes, or application code.
 
 ## Consistency
 This ADR is the RSVP credential and the RSVP access path.
 
-- ADR-003. Guests still have no accounts. The "careful RPC design" is the `public` entrypoint plus `private` helper split above.
+- ADR-003. Guests still have no accounts. The RPC design is a `public` `SECURITY INVOKER` wrapper and an `rsvp_internal` definer. Membership helpers stay in `private`.
 - ADR-004 and ADR-005. Paths are unchanged. The slug is a binding check, not a grant.
 - `docs/DATABASE.md`. "RSVP writes via authenticated-as-anon RPC with token proof" is `exchange_rsvp_session`, `read_rsvp`, and `submit_rsvp`. The shorter `invitations` column sketch is superseded by the column list in this ADR when a migration is written. This change does not edit `DATABASE.md`.
-- `docs/SECURITY.md` still says membership helpers use `search_path = public`. The foundation migration uses `search_path = ''`. That sentence is stale. This change does not edit `SECURITY.md`. Follow-up: correct it, and correct "service_role / secret keys: server only" so it is not read as permission to put `SUPABASE_SECRET_KEY` on the RSVP server.
-- `docs/ARCHITECTURE.md` still mentions a service role "for privileged jobs (e.g. RSVP token resolve via security definer RPC if needed)". This ADR withdraws that example for RSVP. Follow-up: delete the example. Not edited here.
+- `docs/SECURITY.md`. Definer helpers use `search_path = ''` and fully qualified names. RSVP does not use a `service_role` key. Corrected in this revision.
+- `docs/ARCHITECTURE.md`. RSVP does not use `service_role`. Public wrappers are `SECURITY INVOKER`. Privileged work is the non-exposed definer. Corrected in this revision.
 
 ## Related
 - ADR-003 — guests authenticate with invitation tokens, not user accounts
