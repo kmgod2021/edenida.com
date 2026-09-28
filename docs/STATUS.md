@@ -1,6 +1,6 @@
 # Edenida — Project Status
 
-**Last update:** 2026-09-28
+**Last update:** 2026-09-27
 **Overall integrated progress:** **22% + PARTIAL PHASE 3**
 **Production-ready progress:** **0%**
 
@@ -70,13 +70,21 @@ Normative detail: `docs/adr/ADR-005-authenticated-public-route-namespace.md` and
 
 The cloud Auth callback allow list for `/auth/callback` is configured. It is not an open blocker.
 
-## Environment / deployment follow-ups
+## Open items
 
-These are readiness follow-ups. They are not code blockers. They do not change production-ready progress from 0%, and they do not undo Auth integration.
+### Engineering blockers
 
-- `edenida.com` is not yet attached to the Vercel project. Production email confirmation URLs are configured for `https://edenida.com`, but real end-to-end production reachability is not complete until the domain is attached.
-- `edenida-com` Preview is missing `NEXT_PUBLIC_SUPABASE_URL`. Real Preview cloud signup cannot yet run there.
-- Live cloud email confirmation E2E = NOT EXECUTED.
+None for starting Guests + RSVP persistence.
+
+ADR-006 is accepted and frozen. Implementation may begin after this status sync is merged. PR #4 is salvage and reference only, so it is not a blocker. Guests persistence does not exist yet.
+
+### Environment / release follow-ups
+
+These are release/readiness follow-ups, not blockers for starting Guests + RSVP persistence. They do not change production-ready progress from 0%, and they do not undo Auth integration.
+
+1. `edenida.com` is not yet attached to the Vercel project. Production email confirmation URLs are configured for `https://edenida.com`, but real end-to-end production reachability is not complete until the domain is attached.
+2. `edenida-com` Preview is missing `NEXT_PUBLIC_SUPABASE_URL`. Real Preview cloud signup cannot yet run there.
+3. Live cloud email confirmation E2E = NOT EXECUTED.
 
 ## RSVP security architecture (ADR-006)
 
