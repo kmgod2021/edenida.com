@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { buildAuthCallbackUrl } from "@/lib/site-url";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { SignUpForm } from "./sign-up-form";
 
@@ -8,6 +9,7 @@ export const metadata = {
 
 export default function SignUpPage() {
   const configured = isSupabaseConfigured();
+  const emailRedirectTo = buildAuthCallbackUrl("/app");
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
@@ -29,8 +31,16 @@ export default function SignUpPage() {
           <code className="text-ink">NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>{" "}
           dans <code className="text-ink">.env.local</code>.
         </div>
+      ) : !emailRedirectTo ? (
+        <div
+          role="status"
+          className="mt-8 rounded-md border border-line bg-bg-elevated p-4 text-sm text-ink-muted"
+        >
+          L&apos;adresse publique du site n&apos;est pas configurée. Définissez{" "}
+          <code className="text-ink">NEXT_PUBLIC_SITE_URL</code>.
+        </div>
       ) : (
-        <SignUpForm />
+        <SignUpForm emailRedirectTo={emailRedirectTo} />
       )}
 
       <p className="mt-8 text-sm text-ink-muted">
