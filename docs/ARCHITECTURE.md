@@ -142,8 +142,8 @@ Future: host mapping for `{slug}.edenida.com` (ADR-004) does not move member mod
 `status: draft | published`, `published_at`, `is_private`, `slug` unique globally among published.
 
 ## RSVP security
-- `invitations.token` (opaque, high entropy)
-- Rate limit RSVP endpoint
+- Invitation credential: 256-bit opaque raw token returned only at issuance; database stores only `invitations.token_hash` as defined by ADR-006.
+- Rate-limit repeats of the same presented secret. A client IP header is not a security dependency (ADR-006).
 - Token maps to exactly one guest through one invitation; household-level RSVP bearers are out of scope (ADR-006).
 - Never return other guests
 

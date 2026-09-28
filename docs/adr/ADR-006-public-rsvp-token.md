@@ -1,12 +1,12 @@
 # ADR-006: Public RSVP invitation token
 
 ## Status
-Accepted — 2026-09-25. Revised 2026-09-26 (EDE-SEC-RSVP-001-R4). The token design is unchanged. The privileged functions no longer sit in the exposed schema.
+Accepted — 2026-09-25. Revised 2026-09-26 (EDE-SEC-RSVP-001-R4). Revised 2026-09-27 (EDE-SEC-RSVP-001-R4C): `postgres` owns schema `rsvp_internal`. The stored credential remains the digest. The token design is unchanged. The privileged functions no longer sit in the exposed schema.
 
 ## Context
 Public RSVP is locked by ADR-005 at `/w/[slug]/rsvp` and `/w/[slug]/rsvp/confirmation`. Couple administration stays authenticated at `/app/weddings/[id]/guests/rsvp`. Guests have no Edenida account (ADR-003). The credential is the only thing that may authorize a public read or write.
 
-`docs/SECURITY.md` and `docs/DATABASE.md` already require an opaque token, a stored hash, single-guest responses, and a unique `invitations.token_hash`. They do not choose the verifier, the owner of the credential, expiry, revocation, or replay. `docs/ARCHITECTURE.md` still allows "one guest (or household RSVP unit)".
+`docs/SECURITY.md` and `docs/DATABASE.md` already require an opaque token, a stored hash, single-guest responses, and a unique `invitations.token_hash`. They do not choose the verifier, the owner of the credential, expiry, revocation, or replay. `docs/ARCHITECTURE.md` binds the credential to exactly one guest through one invitation. Household-level RSVP bearers are out of scope. The database stores `invitations.token_hash`, not the raw token.
 
 Wave A Guests (branch `agent/edenida-guests-01/ede-guest-001-core`, not this change) hashes fixture tokens with unsalted SHA-256 so a mock UI can tell a live link from a bad one. That hasher and its proposal are explicitly not an approved design. This ADR replaces that proposal. Persistence must not copy the mock into Supabase.
 
@@ -149,14 +149,22 @@ The wrapper may reject a value that is not text before the call. It does not bra
 
 ### `rsvp_internal`
 
-New schema. It is not `private`, and it is not added to `[api] schemas` or `extra_search_path`. `private` already holds membership helpers, and `authenticated` already has `USAGE` there. Giving `anon` `USAGE` on `private` would widen that schema. RSVP gets its own boundary instead.
+New schema. `postgres` owns it. It is not `private`, and it is not added to `[api] schemas` or `extra_search_path`. PostgREST does not expose it. `private` already holds membership helpers, and `authenticated` already has `USAGE` there. Giving `anon` `USAGE` on `private` would widen that schema. RSVP gets its own boundary instead.
 
 ```text
-REVOKE ALL ON SCHEMA rsvp_internal FROM PUBLIC;
-GRANT USAGE ON SCHEMA rsvp_internal TO anon, authenticated;
+schema: rsvp_internal
+owner: postgres
+exposed through PostgREST: NO
 ```
 
-`USAGE` does not publish the schema on PostgREST. Every call is schema-qualified because `search_path` is empty.
+```sql
+REVOKE ALL ON SCHEMA rsvp_internal FROM PUBLIC;
+
+GRANT USAGE ON SCHEMA rsvp_internal
+TO anon, authenticated, rsvp_definer;
+```
+
+`USAGE` lets `rsvp_definer` resolve schema-qualified helper functions. It does not let `anon`, `authenticated`, or `rsvp_definer` create objects in the schema. Do not grant `CREATE` on `rsvp_internal` to those roles. `postgres` owns the schema. `rsvp_definer` owns the privileged RSVP functions, not the schema. API roles execute only the functions granted below. `USAGE` does not publish the schema on PostgREST. Every call is schema-qualified because `search_path` is empty.
 
 Privileged functions:
 
@@ -217,9 +225,10 @@ Grants to `rsvp_definer`:
 - column-level `SELECT`/`UPDATE` on the guest columns the public payload and submit need (`id`, `wedding_id`, `first_name`, `plus_one_allowed`, and the RSVP fields the public form is allowed to change). No grant on `private_notes`, `email`, or `phone`. Public writes to `private_notes`, email, phone, household, side, and `plus_one_allowed` stay forbidden
 - `SELECT` on the site slug and on the guest's invited events
 - `EXECUTE` on `private.can_edit_wedding(uuid)` and `private.is_wedding_member(uuid)`
+- `USAGE` on schema `rsvp_internal`. No `CREATE` on that schema
 - `EXECUTE` on `rsvp_internal.rsvp_token_pepper()`
 
-No grant on `auth.users`, budget, vendors, storage, private files, unrelated wedding tables, or arbitrary reads of `wedding_members`. No `USAGE` on `vault`. No `SELECT` on `vault.decrypted_secrets` or `vault.secrets`. A buggy statement cannot read those objects. The membership helpers are not modified.
+No grant on `auth.users`, budget, vendors, storage, private files, unrelated wedding tables, or arbitrary reads of `wedding_members`. No `CREATE` on schema `rsvp_internal`. No `USAGE` on `vault`. No `SELECT` on `vault.decrypted_secrets` or `vault.secrets`. A buggy statement cannot read those objects. The membership helpers are not modified.
 
 ### Pepper
 
@@ -514,7 +523,7 @@ Required before production, for the cookie exchange.
 | `revoked_at` | Set when the invitation is revoked or the session is replaced |
 | `created_at`, `last_seen_at` | Operational |
 
-No raw cookie value.
+No raw session-secret column. No raw cookie value.
 
 ### RSVP rows
 The current answer stays one row per guest (plus per-event answers for events that guest was invited to). `invitation_id` records which credential last wrote a guest-sourced submit; a couple-sourced edit may leave it null. Public writes update that row. They do not insert a second current RSVP on replay.
@@ -556,6 +565,10 @@ These tests are a gate for the persistence slice. They do not exist yet, and thi
 | RPC output | On success, `exchange_rsvp_session`, `read_rsvp`, and `submit_rsvp` return only the public field set, including when called on the Data API. The pepper, `token_hash`, `session_hash`, email, phone, private notes, and any other guest are absent. `exchange_rsvp_session` may return the new raw session secret once, to the server action only. |
 | Private helper privileges | `anon` and `authenticated` cannot `EXECUTE` `rsvp_internal.rsvp_token_pepper()` or the supporting helpers. They also cannot `EXECUTE` functions in `private` beyond the membership grants that already exist for `authenticated`. |
 | Function exposure | Every `public` RSVP RPC is `SECURITY INVOKER` (`prosecdef = false`). No exposed RSVP function is `SECURITY DEFINER`. Every `rsvp_internal` privileged function is `SECURITY DEFINER`. `rsvp_internal` is not in `[api] schemas`. |
+| Schema ownership | `rsvp_internal` is owned by `postgres` and is not exposed through PostgREST. |
+| Schema privileges | `anon`, `authenticated`, and `rsvp_definer` have `USAGE` on `rsvp_internal` and do not have `CREATE`. |
+| Function ownership | Privileged `rsvp_internal` RSVP functions are owned by `rsvp_definer`. `rsvp_internal.rsvp_token_pepper()` is owned by `postgres`. Calling a `public` wrapper does not run the caller as `rsvp_definer`. |
+| Raw-token storage | `invitations` has `token_hash` and no raw token column. `rsvp_sessions` has `session_hash` and no raw session-secret column. |
 | Role attributes | `rsvp_definer` has `rolcanlogin = false`, `rolsuper = false`, `rolcreatedb = false`, `rolcreaterole = false`, `rolbypassrls = true`. |
 | SET ROLE | `anon`, `authenticated`, and `authenticator` cannot `SET ROLE rsvp_definer`. |
 | Exposed function privileges | `anon` can `EXECUTE` only the three guest wrappers and their three `rsvp_internal` targets. `anon` cannot `EXECUTE` issue, revoke, or metadata. `authenticated` can `EXECUTE` the member wrappers. Membership is still checked inside `rsvp_internal`. |
