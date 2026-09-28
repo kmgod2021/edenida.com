@@ -58,7 +58,7 @@ docs/
 ```
 
 ## Auth pattern
-Official Supabase SSR for Next.js: cookie-based session, **`src/proxy.ts`** session refresh (Next.js 16 renamed `middleware` → `proxy`), server client for RSC/actions. Service role **server-only** for privileged jobs (e.g. RSVP token resolve via security definer RPC if needed).
+Official Supabase SSR for Next.js: cookie-based session, **`src/proxy.ts`** session refresh (Next.js 16 renamed `middleware` → `proxy`), server client for RSC/actions. RSVP uses the publishable key and the caller's JWT. It does not use `service_role` or `SUPABASE_SECRET_KEY`. Public RSVP RPCs are `SECURITY INVOKER` wrappers. Privileged work stays in non-exposed `SECURITY DEFINER` functions. See ADR-006.
 
 Email confirmation returns to `/auth/callback`, which exchanges the authorization code and redirects to an internal `next` path (default `/app`). Signup sets `emailRedirectTo` from the trusted public origin: `NEXT_PUBLIC_SITE_URL` when valid, otherwise `https://$VERCEL_URL`, otherwise `http://localhost:3000` in development. That origin is not a secret and is not taken from request Host headers. When Auth returns no session, signup stays on a “Check your email” state.
 
@@ -142,9 +142,9 @@ Future: host mapping for `{slug}.edenida.com` (ADR-004) does not move member mod
 `status: draft | published`, `published_at`, `is_private`, `slug` unique globally among published.
 
 ## RSVP security
-- `invitations.token` (opaque, high entropy)
-- Rate limit RSVP endpoint
-- Token maps to one guest (or household RSVP unit)
+- Invitation credential: 256-bit opaque raw token returned only at issuance; database stores only `invitations.token_hash` as defined by ADR-006.
+- Rate-limit repeats of the same presented secret. A client IP header is not a security dependency (ADR-006).
+- Token maps to exactly one guest through one invitation; household-level RSVP bearers are out of scope (ADR-006).
 - Never return other guests
 
 ## Seating
